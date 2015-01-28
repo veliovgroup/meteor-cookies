@@ -54,10 +54,12 @@ Meteor.cookie.has('city'); //false
 Meteor.cookie.keys(); //['locale', 'country', 'gender']
 
 Meteor.cookie.remove('locale'); //true
-Meteor.cookie.set('locale'); //null
+Meteor.cookie.get('locale'); //null
 
 Meteor.cookie.keys(); //['country', 'gender']
 
 Meteor.cookie.remove(); //true
 Meteor.cookie.keys(); //[""]
+
+Meteor.cookie.remove(); //false
 ```

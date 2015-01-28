@@ -1,8 +1,8 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '0.0.1',
-  summary: 'Boilerplate cookie functions',
-  git: '',
+  version: '0.0.3',
+  summary: 'Boilerplate cookie functions for Meteor Client',
+  git: 'https://github.com/VeliovGroup/Meteor-Cookies',
   documentation: 'README.md'
 });
 

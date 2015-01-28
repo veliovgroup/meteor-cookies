@@ -15,6 +15,9 @@ Tinytest.add('Meteor.cookie: remove() all', function (test) {
   var removeRes = Meteor.cookie.remove();
   test.isTrue(removeRes);
   test.equal(Meteor.cookie.keys(), [""]);
+
+  removeRes = Meteor.cookie.remove();
+  test.isFalse(removeRes);
 });
 
 Tinytest.add('Meteor.cookie: keys() / has() / remove() some', function (test) {
