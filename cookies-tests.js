@@ -14,7 +14,7 @@ Tinytest.add('Meteor.cookie: remove() non existent cookie', function (test) {
 Tinytest.add('Meteor.cookie: remove() all', function (test) {
   var removeRes = Meteor.cookie.remove();
   test.isTrue(removeRes);
-  test.equal(Meteor.cookie.keys(), [""]);
+  test.equal(Meteor.cookie.keys(), []);
 
   removeRes = Meteor.cookie.remove();
   test.isFalse(removeRes);

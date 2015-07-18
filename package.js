@@ -1,20 +1,19 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '0.0.3',
-  summary: 'Boilerplate cookie functions for Meteor Client',
+  version: '1.0.0',
+  summary: 'Isomorphic boilerplate Server and Client cookie functions',
   git: 'https://github.com/VeliovGroup/Meteor-Cookies',
   documentation: 'README.md'
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom('1.0.3.1');
-  api.addFiles('ostrio:cookies.coffee', 'client');
-  api.use('coffeescript', ['client', 'server']);
+  api.versionsFrom('1.0');
+  api.addFiles('cookies.coffee', ['client', 'server']);
+  api.use(['coffeescript', 'webapp', 'underscore'], ['client', 'server']);
 });
 
 Package.onTest(function(api) {
   api.use('tinytest');
-  api.use('ostrio:cookies');
-  api.use('coffeescript', ['client', 'server']);
-  api.addFiles('ostrio:cookies-tests.js', 'client');
+  api.use(['coffeescript', 'ostrio:cookies@1.0.0', 'underscore', 'webapp'], ['client', 'server']);
+  api.addFiles('cookies-tests.js', ['client', 'server']);
 });
