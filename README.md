@@ -13,7 +13,7 @@ meteor add ostrio:cookies
 
 Usage: [*Isomorphic*]
 ========
-__Note:__ On server, cookies will be set headers is sent (on next route or page reload)
+__Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload)
 
 #### Get [*Isomorphic*]
  - `get(key)` - Read a cookie. If the cookie doesn't exist a null value will be returned.
