@@ -11,7 +11,7 @@ Install:
 meteor add ostrio:cookies
 ```
 
-Usage: [*Isomorphic*]
+Usage:
 ========
 __Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload)
 
@@ -41,6 +41,9 @@ __Note:__ On server, cookies will be set __only__ after headers is sent (on next
 
 #### Keys [*Isomorphic*]
  - `keys()` - Returns an array of all readable cookies from this location
+
+#### Meteor.cookie.serverTTL [*Server*]
+ - `Meteor.cookie.serverTTL = 60 * 24` {*Number*} - Minutes, how long you need to store cookie for each user on server
 
 
 Example:

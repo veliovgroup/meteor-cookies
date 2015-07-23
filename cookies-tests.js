@@ -5,6 +5,22 @@ Tinytest.add('Meteor.cookie: set() / get()', function (test) {
   test.equal(Meteor.cookie.get('testCookie'), testVal);
 });
 
+Tinytest.add('Meteor.cookie: set() / get() / has() no key', function (test) {
+  test.isFalse(Meteor.cookie.set());
+  test.isFalse(Meteor.cookie.get());
+  test.isFalse(Meteor.cookie.has());
+});
+
+Tinytest.add('Meteor.cookie: get() / has() from custom string', function (test) {
+  var testVal = 'customCookieVal';
+  var cookie = 'customCookie='+testVal+'; ';
+  test.equal(Meteor.cookie.get('customCookie', cookie), testVal);
+  test.equal(Meteor.cookie.get('asd', cookie), null);
+  test.isTrue(Meteor.cookie.has('customCookie', cookie));
+  test.isFalse(Meteor.cookie.has('asd', cookie));
+});
+
+
 Tinytest.add('Meteor.cookie: remove() non existent cookie', function (test) {
   var removeRes = Meteor.cookie.remove('1234567890asdfghjk');
   test.isFalse(removeRes);
