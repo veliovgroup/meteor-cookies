@@ -20,12 +20,12 @@ __Server Usage Note:__ On server Cookies implemented in middleware. To get acces
 #### Fetch cookies `new Cookies(opts)` [*Isomorphic*]
   Create new instance of Cookies
   - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
+  - `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
   - `opts.TTL`  {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
   - `opts.runOnServer` {*Boolean*} - Set to `false`to avoid usage (by default - `true`):
     * Middleware
     * Mongo cache-collection
     * Each user cookie identifier
-  - `opts.handler` {*Function*} - Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
 ```javascript
 var cookies = new Cookies();
 ```
