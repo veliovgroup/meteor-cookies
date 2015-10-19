@@ -1,9 +1,5 @@
 Meteor.startup(function(){
   if(Meteor.isClient){
-    Tinytest.add('Cookies: FORSERVER', function (test) {
-      console.log(Cookies);
-      // console.warn(Cookies.get('FORSERVER'));
-    });
     Tinytest.add('Cookies: set() / get()', function (test) {
       var testVal = 'this is test value';
       var setRes = Cookies.set('testCookie', testVal);
