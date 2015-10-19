@@ -1,55 +1,143 @@
-Tinytest.add('Meteor.cookie: set() / get()', function (test) {
-  var testVal = 'this is test value';
-  var setRes = Meteor.cookie.set('testCookie', testVal);
-  test.isTrue(setRes);
-  test.equal(Meteor.cookie.get('testCookie'), testVal);
-});
+Meteor.startup(function(){
+  if(Meteor.isClient){
+    Tinytest.add('Cookies: FORSERVER', function (test) {
+      console.log(Cookies);
+      // console.warn(Cookies.get('FORSERVER'));
+    });
+    Tinytest.add('Cookies: set() / get()', function (test) {
+      var testVal = 'this is test value';
+      var setRes = Cookies.set('testCookie', testVal);
+      test.isTrue(setRes);
+      test.equal(Cookies.get('testCookie'), testVal);
+    });
 
-Tinytest.add('Meteor.cookie: set() / get() / has() no key', function (test) {
-  test.isFalse(Meteor.cookie.set());
-  test.isFalse(Meteor.cookie.get());
-  test.isFalse(Meteor.cookie.has());
-});
+    Tinytest.add('Cookies: set() / get() / has() no key', function (test) {
+      test.isFalse(Cookies.set());
+      test.isNull(Cookies.get());
+      test.isFalse(Cookies.has());
+    });
 
-Tinytest.add('Meteor.cookie: get() / has() from custom string', function (test) {
-  var testVal = 'customCookieVal';
-  var cookie = 'customCookie='+testVal+'; ';
-  test.equal(Meteor.cookie.get('customCookie', cookie), testVal);
-  test.equal(Meteor.cookie.get('asd', cookie), null);
-  test.isTrue(Meteor.cookie.has('customCookie', cookie));
-  test.isFalse(Meteor.cookie.has('asd', cookie));
-});
-
-
-Tinytest.add('Meteor.cookie: remove() non existent cookie', function (test) {
-  var removeRes = Meteor.cookie.remove('1234567890asdfghjk');
-  test.isFalse(removeRes);
-});
+    Tinytest.add('Cookies: get() / has() from custom string', function (test) {
+      var testVal = 'customCookieVal';
+      var cookie = 'customCookie='+testVal+'; ';
+      test.equal(Cookies.get('customCookie', cookie), testVal);
+      test.equal(Cookies.get('asd', cookie), null);
+      test.isTrue(Cookies.has('customCookie', cookie));
+      test.isFalse(Cookies.has('asd', cookie));
+    });
 
 
-Tinytest.add('Meteor.cookie: remove() all', function (test) {
-  var removeRes = Meteor.cookie.remove();
-  test.isTrue(removeRes);
-  test.equal(Meteor.cookie.keys(), []);
+    Tinytest.add('Cookies: remove() non existent cookie', function (test) {
+      var removeRes = Cookies.remove('1234567890asdfghjk');
+      test.isFalse(removeRes);
+    });
 
-  removeRes = Meteor.cookie.remove();
-  test.isFalse(removeRes);
-});
 
-Tinytest.add('Meteor.cookie: keys() / has() / remove() some', function (test) {
-  Meteor.cookie.remove();
+    Tinytest.add('Cookies: keys() / has() / remove() some', function (test) {
+      Cookies.remove();
 
-  var setResOne = Meteor.cookie.set('testCookieOne', 'One');
-  var setResTwo = Meteor.cookie.set('testCookieTwo', 'Two');
+      var setResOne = Cookies.set('testCookieOne', 'One');
+      var setResTwo = Cookies.set('testCookieTwo', 'Two');
 
-  test.equal(Meteor.cookie.keys(), ['testCookieOne', 'testCookieTwo']);
+      test.equal(Cookies.keys(), ['testCookieOne', 'testCookieTwo']);
 
-  test.isTrue(Meteor.cookie.has('testCookieOne'));
-  test.isTrue(Meteor.cookie.has('testCookieTwo'));
+      test.isTrue(Cookies.has('testCookieOne'));
+      test.isTrue(Cookies.has('testCookieTwo'));
 
-  var removeRes = Meteor.cookie.remove('testCookieOne');
-  test.isTrue(removeRes);
+      var removeRes = Cookies.remove('testCookieOne');
+      test.isTrue(removeRes);
 
-  test.isFalse(Meteor.cookie.has('testCookieOne'));
-  test.isTrue(Meteor.cookie.has('testCookieTwo'));
+      test.isFalse(Cookies.has('testCookieOne'));
+      test.isTrue(Cookies.has('testCookieTwo'));
+    });
+
+    Tinytest.add('Cookies: remove() all', function (test) {
+      var removeRes = Cookies.remove();
+      test.isTrue(removeRes);
+      test.equal(Cookies.keys(), []);
+
+      removeRes = Cookies.remove();
+      test.isFalse(removeRes);
+    });
+
+    Tinytest.add('Server test - see in console', function(test){});
+
+    // Tinytest.add('From Client to Server', function(test){
+    //   Cookies.set('FORSERVERTEST222', '_form_client_to_server_tests_');
+    //   Cookies.apply()
+    // });
+  }else{
+    var tester = function(one, two, testname){
+      if(EJSON.equals(one, two)){
+        console.info('['+testname+'] PASSED');
+      }else{
+        console.warn('['+testname+'] Failed', 'Expected: ' + JSON.stringify(two), "Got: " + JSON.stringify(one));
+      }
+    }
+
+    WebApp.connectHandlers.use(function(req, res, next){
+      Cookies = req.Cookies;
+
+      // tester(Cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_');
+
+      (function(){
+        var testVal = 'this is test value';
+        var setRes = Cookies.set('testCookie', testVal);
+        tester(setRes, true, 'Cookies.set', Cookies);
+        tester(Cookies.get('testCookie'), testVal, 'Cookies.get', Cookies);
+      })();
+
+      (function(){
+        tester(Cookies.set(), false, 'Cookies.set()', Cookies);
+        tester(Cookies.get(), null, 'Cookies.get()', Cookies);
+        tester(Cookies.has(), false, 'Cookies.has()', Cookies);
+      })();
+
+      (function(){
+        var testVal = 'customCookieVal';
+        var cookie = 'customCookie='+testVal+'; ';
+        tester(Cookies.get('customCookie', cookie), testVal, "Cookies.get('customCookie')", Cookies);
+        tester(Cookies.get('asd', cookie), null, "Cookies.get('asd')", Cookies);
+        tester(Cookies.has('customCookie', cookie), true, "Cookies.has('customCookie'_", Cookies);
+        tester(Cookies.has('asd', cookie), false, "Cookies.has('asd')", Cookies);
+      })();
+
+
+      (function(){
+        var removeRes = Cookies.remove('1234567890asdfghjk');
+        tester(removeRes, false, "Cookies.remove('1234567890asdfghjk')", Cookies);
+      })();
+
+
+      (function(){
+        Cookies.remove();
+
+        var setResOne = Cookies.set('testCookieOne', 'One');
+        var setResTwo = Cookies.set('testCookieTwo', 'Two');
+
+        tester(Cookies.keys(), ['testCookieOne', 'testCookieTwo'], "Cookies.keys()", Cookies);
+
+        tester(Cookies.has('testCookieOne'), true, "Cookies.has('testCookieOne')", Cookies);
+        tester(Cookies.has('testCookieTwo'), true, "Cookies.has('testCookieTwo')", Cookies);
+
+        var removeRes = Cookies.remove('testCookieOne');
+        tester(removeRes, true, "Cookies.remove('testCookieOne')", Cookies);
+
+        tester(Cookies.has('testCookieOne'), false, "Cookies.has('testCookieOne')", Cookies);
+        tester(Cookies.has('testCookieTwo'), true, "Cookies.has('testCookieTwo')", Cookies);
+      })();
+
+      (function(){
+        var removeRes = Cookies.remove();
+        tester(removeRes, true, "Cookies.remove()", Cookies);
+        tester(Cookies.keys(), [], "Cookies.keys()", Cookies);
+
+        removeRes = Cookies.remove();
+        tester(removeRes, false, "Cookies.remove()", Cookies);
+      })();
+
+      next();
+    });
+  }
+
 });
