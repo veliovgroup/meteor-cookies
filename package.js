@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '2.0.0-beta.2',
+  version: '2.0.0',
   summary: 'Isomorphic boilerplate Server and Client cookie functions',
   git: 'https://github.com/VeliovGroup/Meteor-Cookies',
   documentation: 'README.md'
