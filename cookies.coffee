@@ -158,7 +158,7 @@ if Meteor.isServer
   bound = Meteor.bindEnvironment (callback) -> callback()
 
 class __cookies
-  constructor: (_cookies, @collection, @TTL) ->
+  constructor: (_cookies, @collection, @TTL, @runOnServer) ->
     if _.isObject _cookies
       @cookies = _cookies
     else
@@ -220,7 +220,7 @@ class __cookies
       if Meteor.isClient
         document.cookie = newCookie
       else
-        @collection.update {_id: @cookies['___utid___']}, $addToSet: toSet: newCookie
+        @collection.update {_id: @cookies['___utcid___']}, $addToSet: toSet: newCookie
       true
     else
       false
@@ -251,10 +251,10 @@ class __cookies
       if Meteor.isClient
         document.cookie = newCookie
       else
-        @collection.update {_id: @cookies['___utid___']}, $addToSet: toSet: newCookie
+        @collection.update {_id: @cookies['___utcid___']}, $addToSet: toSet: newCookie
       true
     else if @keys().length > 0 and @keys()[0] isnt ""
-      @remove k for k in @keys() when k isnt '___utid___'
+      @remove k for k in @keys() when k isnt '___utcid___'
       true
     else
       false
@@ -280,7 +280,6 @@ class __cookies
     else 
       !!_cs?[key]
 
-  
   ###
   @function
   @namespace __cookies
@@ -288,62 +287,96 @@ class __cookies
   @description Returns an array of all readable cookies from this location.
   @returns {[String]}
   ###
-  keys: -> if @cookies then _.without Object.keys(@cookies), '___utid___' else []
+  keys: -> if @cookies then _.without Object.keys(@cookies), '___utcid___' else []
 
   ###
   @function
   @namespace __cookies
-  @name apply
+  @name send
   @description Send all cookies over XHR to server.
   @returns {void}
   ###
-  apply: -> HTTP.get '/___cookie___/set', () -> return
+  send: -> 
+    if @runOnServer
+      HTTP.get '/___cookie___/set', () -> return
+    else
+      throw new Meteor.Error '400', 'Can\'t send cookies on server when `runOnServer` is false.'
 
-CookiesTTL = 1000 * 60 * 60 * 24 * 31
-Cookies = {}
-if Meteor.isServer
-  bound ->
-    cookiesCollection = new Mongo.Collection '___cookies___'
-    cookiesCollection._ensureIndex {expire: 1}, {expireAfterSeconds: 0, background: true}
-    cookiesCollection.deny
-      insert: -> true
-      update: -> true
-      remove: -> true
+__middlewareHandler = (req, res, self) ->
+  if self.runOnServer
+    if req.headers?.cookie
+      _cookies = parse req.headers.cookie
+    else
+      _cookies = {}
 
-    WebApp.connectHandlers.use (req, res, next) ->
-      if req._parsedUrl.path is '/___cookie___/set'
-        res.end 'true'
+    expire = (+new Date) + self.TTL
+    if _cookies['___utcid___']
+      _storedCookies = self.collection.findOne _cookies['___utcid___']
+      unless _storedCookies
+        self.collection.insert 
+          _id:    _cookies['___utcid___']
+          toSet:  []
+          expire: expire
       else
-        if req.headers?.cookie
-          _cookies = parse req.headers.cookie
-        else
-          _cookies = {}
+        self.collection.update {_id: _cookies['___utcid___']}, $set: {expire}
+        _cookies = _.extend parse(_storedCookies.value), _cookies if _storedCookies?.value
+        if _storedCookies.toSet
+          for cookie in _storedCookies.toSet
+            res.setHeader 'Set-Cookie', cookie 
+            _cookie = parse cookie
 
-        if _cookies['___utid___']
-          _storedCookies = cookiesCollection.findOne _cookies['___utid___']
-          unless _storedCookies
-            cookiesCollection.insert 
-              _id:    _cookies['___utid___']
-              toSet:  []
-              expire: (+new Date) + CookiesTTL
-          else
-            cookiesCollection.update {_id: _cookies['___utid___']}, $set: expire: (+new Date) + CookiesTTL
-            _cookies = _.extend parse(_storedCookies.value), _cookies if _storedCookies?.value
-            if _storedCookies.toSet
-              for cookie in _storedCookies.toSet
-                res.setHeader 'Set-Cookie', cookie 
-                _cookie = parse cookie
+          self.collection.update {_id: _cookies['___utcid___']}, $set: toSet: []
+    else
+      _id = self.collection.insert {expire}
+      res.setHeader 'Set-Cookie', serialize '___utcid___', _id, expires: new Date expire
+      _cookies = _.extend _cookies, ___utcid___: _id
+      
+    return new __cookies _cookies, self.collection, self.TTL, self.runOnServer
+  else
+    throw new Meteor.Error '400', 'Can\'t use middleware when `runOnServer` is false.'
 
-              cookiesCollection.update {_id: _cookies['___utid___']}, $set: toSet: []
-        else
-          expire = (+new Date) + CookiesTTL
-          _id = cookiesCollection.insert {expire}
-          res.setHeader 'Set-Cookie', serialize '___utid___', _id, expires: new Date expire
-          _cookies = _.extend _cookies, ___utid___: _id
-        
-        req.Cookies = new __cookies _cookies, cookiesCollection, CookiesTTL
+class Cookies extends __cookies
+  constructor: (opts = {}) ->
+    {@runOnServer, @handler, @TTL, @auto} = opts
+    @runOnServer ?= opts.runOnServer or true
+    @TTL         ?= opts.TTL or 1000 * 60 * 60 * 24 * 31
+
+    if Meteor.isServer
+      if @runOnServer
+        @auto    ?= true
+        @handler ?= (c) -> return
+        self     = @
+        bound ->
+          self.collection = new Mongo.Collection '___cookies___'
+          self.collection._ensureIndex {expire: 1}, {expireAfterSeconds: 0, background: true}
+          self.collection.deny
+            insert: -> true
+            update: -> true
+            remove: -> true
+
+          if self.auto
+            WebApp.connectHandlers.use (req, res, next) ->
+              if req._parsedUrl.path is '/___cookie___/set'
+                res.end 'true'
+              else
+                req.Cookies = __middlewareHandler req, res, self
+                next()
+    else
+      super document.cookie, null, @TTL, @runOnServer
+      if @runOnServer and not @has '___utcid___'
+        @set '___utcid___', Random.id(), expires: new Date 253402300799000
+
+  ###
+  @function
+  @namespace __cookies
+  @name middleware
+  @description Get Cookies instance into callback
+  @returns {void}
+  ###
+  middleware: (req, res, next) -> 
+    if Meteor.isServer
+      self    = @
+      return (req, res, next) -> 
+        _cookie = __middlewareHandler req, res, self
+        self.handler and self.handler(_cookie)
         next()
-else
-  Cookies = {}
-  Cookies = new __cookies document.cookie, null, CookiesTTL
-  Cookies.set '___utid___', Random.id(), expires: new Date 253402300799000 unless Cookies.has '___utid___'

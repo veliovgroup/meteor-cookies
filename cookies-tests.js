@@ -1,66 +1,67 @@
 Meteor.startup(function(){
   if(Meteor.isClient){
-    Tinytest.add('Cookies: set() / get()', function (test) {
+    cookies = new Cookies();
+    Tinytest.add('cookies: set() / get()', function (test) {
       var testVal = 'this is test value';
-      var setRes = Cookies.set('testCookie', testVal);
+      var setRes = cookies.set('testCookie', testVal);
       test.isTrue(setRes);
-      test.equal(Cookies.get('testCookie'), testVal);
+      test.equal(cookies.get('testCookie'), testVal);
     });
 
-    Tinytest.add('Cookies: set() / get() / has() no key', function (test) {
-      test.isFalse(Cookies.set());
-      test.isNull(Cookies.get());
-      test.isFalse(Cookies.has());
+    Tinytest.add('cookies: set() / get() / has() no key', function (test) {
+      test.isFalse(cookies.set());
+      test.isNull(cookies.get());
+      test.isFalse(cookies.has());
     });
 
-    Tinytest.add('Cookies: get() / has() from custom string', function (test) {
+    Tinytest.add('cookies: get() / has() from custom string', function (test) {
       var testVal = 'customCookieVal';
       var cookie = 'customCookie='+testVal+'; ';
-      test.equal(Cookies.get('customCookie', cookie), testVal);
-      test.equal(Cookies.get('asd', cookie), null);
-      test.isTrue(Cookies.has('customCookie', cookie));
-      test.isFalse(Cookies.has('asd', cookie));
+      test.equal(cookies.get('customCookie', cookie), testVal);
+      test.equal(cookies.get('asd', cookie), null);
+      test.isTrue(cookies.has('customCookie', cookie));
+      test.isFalse(cookies.has('asd', cookie));
     });
 
 
-    Tinytest.add('Cookies: remove() non existent cookie', function (test) {
-      var removeRes = Cookies.remove('1234567890asdfghjk');
+    Tinytest.add('cookies: remove() non existent cookie', function (test) {
+      var removeRes = cookies.remove('1234567890asdfghjk');
       test.isFalse(removeRes);
     });
 
 
-    Tinytest.add('Cookies: keys() / has() / remove() some', function (test) {
-      Cookies.remove();
+    Tinytest.add('cookies: keys() / has() / remove() some', function (test) {
+      cookies.remove();
 
-      var setResOne = Cookies.set('testCookieOne', 'One');
-      var setResTwo = Cookies.set('testCookieTwo', 'Two');
+      var setResOne = cookies.set('testCookieOne', 'One');
+      var setResTwo = cookies.set('testCookieTwo', 'Two');
 
-      test.equal(Cookies.keys(), ['testCookieOne', 'testCookieTwo']);
+      test.equal(cookies.keys(), ['testCookieOne', 'testCookieTwo']);
 
-      test.isTrue(Cookies.has('testCookieOne'));
-      test.isTrue(Cookies.has('testCookieTwo'));
+      test.isTrue(cookies.has('testCookieOne'));
+      test.isTrue(cookies.has('testCookieTwo'));
 
-      var removeRes = Cookies.remove('testCookieOne');
+      var removeRes = cookies.remove('testCookieOne');
       test.isTrue(removeRes);
 
-      test.isFalse(Cookies.has('testCookieOne'));
-      test.isTrue(Cookies.has('testCookieTwo'));
+      test.isFalse(cookies.has('testCookieOne'));
+      test.isTrue(cookies.has('testCookieTwo'));
     });
 
-    Tinytest.add('Cookies: remove() all', function (test) {
-      var removeRes = Cookies.remove();
+    Tinytest.add('cookies: remove() all', function (test) {
+      var removeRes = cookies.remove();
       test.isTrue(removeRes);
-      test.equal(Cookies.keys(), []);
+      test.equal(cookies.keys(), []);
 
-      removeRes = Cookies.remove();
+      removeRes = cookies.remove();
       test.isFalse(removeRes);
     });
 
     Tinytest.add('Server test - see in console', function(test){});
 
     // Tinytest.add('From Client to Server', function(test){
-    //   Cookies.set('FORSERVERTEST222', '_form_client_to_server_tests_');
-    //   Cookies.apply()
+    //   cookies.set('FORSERVERTEST222', '_form_client_to_server_tests_');
+    //   cookies.apply()
     // });
   }else{
     var tester = function(one, two, testname){
@@ -69,71 +70,71 @@ Meteor.startup(function(){
       }else{
         console.warn('['+testname+'] Failed', 'Expected: ' + JSON.stringify(two), "Got: " + JSON.stringify(one));
       }
-    }
+    };
 
-    WebApp.connectHandlers.use(function(req, res, next){
-      Cookies = req.Cookies;
+    cookie = new Cookies({
+      auto: false, 
+      handler: function(cookies){
+        // tester(cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_');
 
-      // tester(Cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_');
+        (function(){
+          var testVal = 'this is test value';
+          var setRes = cookies.set('testCookie', testVal);
+          tester(setRes, true, 'cookies.set', cookies);
+          tester(cookies.get('testCookie'), testVal, 'cookies.get', cookies);
+        })();
 
-      (function(){
-        var testVal = 'this is test value';
-        var setRes = Cookies.set('testCookie', testVal);
-        tester(setRes, true, 'Cookies.set', Cookies);
-        tester(Cookies.get('testCookie'), testVal, 'Cookies.get', Cookies);
-      })();
+        (function(){
+          tester(cookies.set(), false, 'cookies.set()', cookies);
+          tester(cookies.get(), null, 'cookies.get()', cookies);
+          tester(cookies.has(), false, 'cookies.has()', cookies);
+        })();
 
-      (function(){
-        tester(Cookies.set(), false, 'Cookies.set()', Cookies);
-        tester(Cookies.get(), null, 'Cookies.get()', Cookies);
-        tester(Cookies.has(), false, 'Cookies.has()', Cookies);
-      })();
-
-      (function(){
-        var testVal = 'customCookieVal';
-        var cookie = 'customCookie='+testVal+'; ';
-        tester(Cookies.get('customCookie', cookie), testVal, "Cookies.get('customCookie')", Cookies);
-        tester(Cookies.get('asd', cookie), null, "Cookies.get('asd')", Cookies);
-        tester(Cookies.has('customCookie', cookie), true, "Cookies.has('customCookie'_", Cookies);
-        tester(Cookies.has('asd', cookie), false, "Cookies.has('asd')", Cookies);
-      })();
-
-
-      (function(){
-        var removeRes = Cookies.remove('1234567890asdfghjk');
-        tester(removeRes, false, "Cookies.remove('1234567890asdfghjk')", Cookies);
-      })();
+        (function(){
+          var testVal = 'customCookieVal';
+          var cookie = 'customCookie='+testVal+'; ';
+          tester(cookies.get('customCookie', cookie), testVal, "cookies.get('customCookie')", cookies);
+          tester(cookies.get('asd', cookie), null, "cookies.get('asd')", cookies);
+          tester(cookies.has('customCookie', cookie), true, "cookies.has('customCookie'_", cookies);
+          tester(cookies.has('asd', cookie), false, "cookies.has('asd')", cookies);
+        })();
 
 
-      (function(){
-        Cookies.remove();
+        (function(){
+          var removeRes = cookies.remove('1234567890asdfghjk');
+          tester(removeRes, false, "cookies.remove('1234567890asdfghjk')", cookies);
+        })();
 
-        var setResOne = Cookies.set('testCookieOne', 'One');
-        var setResTwo = Cookies.set('testCookieTwo', 'Two');
 
-        tester(Cookies.keys(), ['testCookieOne', 'testCookieTwo'], "Cookies.keys()", Cookies);
+        (function(){
+          cookies.remove();
 
-        tester(Cookies.has('testCookieOne'), true, "Cookies.has('testCookieOne')", Cookies);
-        tester(Cookies.has('testCookieTwo'), true, "Cookies.has('testCookieTwo')", Cookies);
+          var setResOne = cookies.set('testCookieOne', 'One');
+          var setResTwo = cookies.set('testCookieTwo', 'Two');
 
-        var removeRes = Cookies.remove('testCookieOne');
-        tester(removeRes, true, "Cookies.remove('testCookieOne')", Cookies);
+          tester(cookies.keys(), ['testCookieOne', 'testCookieTwo'], "cookies.keys()", cookies);
 
-        tester(Cookies.has('testCookieOne'), false, "Cookies.has('testCookieOne')", Cookies);
-        tester(Cookies.has('testCookieTwo'), true, "Cookies.has('testCookieTwo')", Cookies);
-      })();
+          tester(cookies.has('testCookieOne'), true, "cookies.has('testCookieOne')", cookies);
+          tester(cookies.has('testCookieTwo'), true, "cookies.has('testCookieTwo')", cookies);
 
-      (function(){
-        var removeRes = Cookies.remove();
-        tester(removeRes, true, "Cookies.remove()", Cookies);
-        tester(Cookies.keys(), [], "Cookies.keys()", Cookies);
+          var removeRes = cookies.remove('testCookieOne');
+          tester(removeRes, true, "cookies.remove('testCookieOne')", cookies);
 
-        removeRes = Cookies.remove();
-        tester(removeRes, false, "Cookies.remove()", Cookies);
-      })();
+          tester(cookies.has('testCookieOne'), false, "cookies.has('testCookieOne')", cookies);
+          tester(cookies.has('testCookieTwo'), true, "cookies.has('testCookieTwo')", cookies);
+        })();
 
-      next();
+        (function(){
+          var removeRes = cookies.remove();
+          tester(removeRes, true, "cookies.remove()", cookies);
+          tester(cookies.keys(), [], "cookies.keys()", cookies);
+
+          removeRes = cookies.remove();
+          tester(removeRes, false, "cookies.remove()", cookies);
+        })();
+      }
     });
-  }
 
+    WebApp.connectHandlers.use(cookie.middleware());
+  }
 });
