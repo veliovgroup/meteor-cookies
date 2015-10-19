@@ -61,7 +61,7 @@ Meteor.startup(function(){
 
     // Tinytest.add('From Client to Server', function(test){
     //   cookies.set('FORSERVERTEST222', '_form_client_to_server_tests_');
-    //   cookies.apply()
+    //   cookies.send()
     // });
   }else{
     var tester = function(one, two, testname){

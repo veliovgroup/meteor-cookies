@@ -13,7 +13,7 @@ meteor add ostrio:cookies
 
 API:
 ========
-__Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload). To send cookies from client to server without page reload use `apply()` method
+__Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload). To send cookies from client to server without page reload use `send()` method
 
 __Server Usage Note:__ On server Cookies implemented in middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
 
