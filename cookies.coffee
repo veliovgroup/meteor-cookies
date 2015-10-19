@@ -153,10 +153,6 @@ tryDecode = (str, decode) ->
     return str
   return
 
-
-if Meteor.isServer
-  bound = Meteor.bindEnvironment (callback) -> callback()
-
 class __cookies
   constructor: (_cookies, @collection, @TTL, @runOnServer) ->
     if _.isObject _cookies
@@ -296,7 +292,7 @@ class __cookies
   @description Send all cookies over XHR to server.
   @returns {void}
   ###
-  send: -> 
+  send: ->
     if @runOnServer
       HTTP.get '/___cookie___/set', () -> return
     else
@@ -343,24 +339,24 @@ class Cookies extends __cookies
 
     if Meteor.isServer
       if @runOnServer
-        @auto    ?= true
-        @handler ?= (c) -> return
-        self     = @
-        bound ->
-          self.collection = new Mongo.Collection '___cookies___'
-          self.collection._ensureIndex {expire: 1}, {expireAfterSeconds: 0, background: true}
-          self.collection.deny
+        @collection = Cookies.collection
+        @auto      ?= true
+        @handler   ?= (c) -> return
+
+        unless Cookies.isLoadedOnServer
+          @collection._ensureIndex {expire: 1}, {expireAfterSeconds: 0, background: true}
+          @collection.deny
             insert: -> true
             update: -> true
             remove: -> true
 
-          if self.auto
+          if @auto
+            self = @
             WebApp.connectHandlers.use (req, res, next) ->
-              if req._parsedUrl.path is '/___cookie___/set'
-                res.end 'true'
-              else
-                req.Cookies = __middlewareHandler req, res, self
-                next()
+              req.Cookies = __middlewareHandler req, res, self
+              next()
+
+          Cookies.isLoadedOnServer = true
     else
       super document.cookie, null, @TTL, @runOnServer
       if @runOnServer and not @has '___utcid___'
@@ -380,3 +376,7 @@ class Cookies extends __cookies
         _cookie = __middlewareHandler req, res, self
         self.handler and self.handler(_cookie)
         next()
+
+if Meteor.isServer
+  Cookies.isLoadedOnServer = false
+  Cookies.collection       = new Mongo.Collection '___cookies___'
