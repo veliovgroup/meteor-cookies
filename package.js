@@ -18,7 +18,7 @@ Package.onUse(function(api) {
 
 Package.onTest(function(api) {
   api.use('tinytest');
-  api.use(['coffeescript', 'ostrio:cookies@2.0.0-beta'], ['client', 'server']);
+  api.use(['coffeescript', 'ostrio:cookies@2.0.0'], ['client', 'server']);
   api.use(['underscore', 'ejson', 'webapp'], 'server');
   api.addFiles('cookies-tests.js', ['client', 'server']);
 });
