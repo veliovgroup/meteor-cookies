@@ -1,6 +1,11 @@
 Meteor.startup(function(){
   if(Meteor.isClient){
     cookies = new Cookies();
+
+    Tinytest.add('From Server to Client', function(test){
+      test.equal(cookies.get('FORCLIENT'), '_form_server_to_client_tests_');
+    });
+
     Tinytest.add('cookies: set() / get()', function (test) {
       var testVal = 'this is test value';
       var setRes = cookies.set('testCookie', testVal);
@@ -59,11 +64,13 @@ Meteor.startup(function(){
 
     Tinytest.add('Server test - see in console', function(test){});
 
-    // Tinytest.add('From Client to Server', function(test){
-    //   cookies.set('FORSERVERTEST222', '_form_client_to_server_tests_');
-    //   cookies.send()
-    // });
+    Tinytest.add('From Client to Server', function(test){
+      cookies.set('FORSERVERTEST', '_form_client_to_server_tests_');
+      cookies.send()
+    });
+
   }else{
+
     var tester = function(one, two, testname){
       if(EJSON.equals(one, two)){
         console.info('['+testname+'] PASSED');
@@ -75,7 +82,7 @@ Meteor.startup(function(){
     cookie = new Cookies({
       auto: false, 
       handler: function(cookies){
-        // tester(cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_');
+        tester(cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_', 'From Client to Server [First Time should FAIL]');
 
         (function(){
           var testVal = 'this is test value';
@@ -95,7 +102,7 @@ Meteor.startup(function(){
           var cookie = 'customCookie='+testVal+'; ';
           tester(cookies.get('customCookie', cookie), testVal, "cookies.get('customCookie')", cookies);
           tester(cookies.get('asd', cookie), null, "cookies.get('asd')", cookies);
-          tester(cookies.has('customCookie', cookie), true, "cookies.has('customCookie'_", cookies);
+          tester(cookies.has('customCookie', cookie), true, "cookies.has('customCookie')", cookies);
           tester(cookies.has('asd', cookie), false, "cookies.has('asd')", cookies);
         })();
 
@@ -132,6 +139,8 @@ Meteor.startup(function(){
           removeRes = cookies.remove();
           tester(removeRes, false, "cookies.remove()", cookies);
         })();
+
+        cookies.set('FORCLIENT' , '_form_server_to_client_tests_');
       }
     });
 

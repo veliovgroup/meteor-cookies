@@ -33,25 +33,23 @@ encode = encodeURIComponent
 pairSplitRegExp = /; */
 
 ###
-# RegExp to match field-content in RFC 7230 sec 3.2
-#
-# field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
-# field-vchar   = VCHAR / obs-text
-# obs-text      = %x80-FF
-###
+RegExp to match field-content in RFC 7230 sec 3.2
 
+field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
+field-vchar   = VCHAR / obs-text
+obs-text      = %x80-FF
+###
 fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 
 ###
-# Parse a cookie header.
-#
-# Parse the given cookie header string into an object
-# The object has the various cookies as keys(names) => values
-#
-# @param {string} str
-# @param {object} [options]
-# @return {object}
-# @public
+@param {String} str
+@param {Object} [options]
+@return {Object}
+@description
+Parse a cookie header.
+Parse the given cookie header string into an object
+The object has the various cookies as keys(names) => values
+@private
 ###
 
 parse = (str, options) ->
@@ -78,19 +76,17 @@ parse = (str, options) ->
   obj
 
 ###
-# Serialize data into a cookie header.
-#
-# Serialize the a name value pair into a cookie string suitable for
-# http headers. An optional options object specified cookie parameters.
-#
-# serialize('foo', 'bar', { httpOnly: true })
-#   => "foo=bar; httpOnly"
-#
-# @param {string} name
-# @param {string} val
-# @param {object} [options]
-# @return {string}
-# @public
+@param {String} name
+@param {String} val
+@param {Object} [options]
+@return {String}
+@description
+Serialize data into a cookie header.
+Serialize the a name value pair into a cookie string suitable for
+http headers. An optional options object specified cookie parameters.
+serialize('foo', 'bar', { httpOnly: true })
+  => "foo=bar; httpOnly"
+@private
 ###
 
 serialize = (name, val, options) ->
@@ -139,13 +135,11 @@ serialize = (name, val, options) ->
   pairs.join '; '
 
 ###
-# Try decoding a string using a decoding function.
-#
-# @param {string} str
-# @param {function} decode
-# @private
+@param {String} str
+@param {Function} decode
+@description Try decoding a string using a decoding function.
+@private
 ###
-
 tryDecode = (str, decode) ->
   try
     return decode(str)
@@ -154,7 +148,7 @@ tryDecode = (str, decode) ->
   return
 
 class __cookies
-  constructor: (_cookies, @collection, @TTL, @runOnServer) ->
+  constructor: (_cookies, @collection, @TTL, @runOnServer, @response) ->
     if _.isObject _cookies
       @cookies = _cookies
     else
@@ -164,22 +158,19 @@ class __cookies
   @function
   @namespace __cookies
   @name get
-  @param {String} key   - The name of the cookie to read
-  @param {String} _tmp  - Unparsed string instead of user's cookies
+  @param {String} key  - The name of the cookie to read
+  @param {String} _tmp - Unparsed string instead of user's cookies
   @description Read a cookie. If the cookie doesn't exist a null value will be returned.
+  @returns {String|null}
   ###
   get: (key, _tmp) ->
-    if _tmp 
-      _cs = parse _tmp
-    else
-      _cs = @cookies
+    _cs = if _tmp then parse _tmp else @cookies
 
     if not key or not _cs
       null
     else 
       if _cs?[key] then _cs[key] else null
 
-  
   ###
   @function
   @namespace __cookies
@@ -202,6 +193,7 @@ class __cookies
   @param {Boolean} opts.secure  - [Optional] The cookie will be transmitted only
   over secure protocol as https (boolean or null).
   @description Create/overwrite a cookie.
+  @returns {Boolean}
   ###
   set: (key, value, opts = {}) ->
     if key and value
@@ -216,27 +208,27 @@ class __cookies
       if Meteor.isClient
         document.cookie = newCookie
       else
-        @collection.update {_id: @cookies['___utcid___']}, $addToSet: toSet: newCookie
+        @response.setHeader 'Set-Cookie', newCookie
       true
     else
       false
 
-  
   ###
   @function
   @namespace __cookies
   @name remove
-  @param {String} key      - The name of the cookie to create/overwrite
-  @param {String} path     - [Optional] The path from where the cookie will be
+  @param {String} key    - The name of the cookie to create/overwrite
+  @param {String} path   - [Optional] The path from where the cookie will be
   readable. E.g., "/", "/mydir"; if not specified, defaults to the current
   path of the current document location (string or null). The path must be
   absolute (see RFC 2965). For more information on how to use relative paths
   in this argument, see: https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter
-  @param {String} domain   - [Optional] The domain from where the cookie will
+  @param {String} domain - [Optional] The domain from where the cookie will
   be readable. E.g., "example.com", ".example.com" (includes all subdomains)
   or "subdomain.example.com"; if not specified, defaults to the host portion
   of the current document location (string or null).
   @description Remove a cookie(s).
+  @returns {Boolean}
   ###
   remove: (key, path = '/', domain = '') ->
     if key
@@ -247,29 +239,25 @@ class __cookies
       if Meteor.isClient
         document.cookie = newCookie
       else
-        @collection.update {_id: @cookies['___utcid___']}, $addToSet: toSet: newCookie
+        @response.setHeader 'Set-Cookie', newCookie
       true
     else if @keys().length > 0 and @keys()[0] isnt ""
-      @remove k for k in @keys() when k isnt '___utcid___'
+      @remove k for k in @keys()
       true
     else
       false
 
-  
   ###
   @function
   @namespace __cookies
   @name has
   @param {String} key  - The name of the cookie to create/overwrite
-  @param {String} _tmp - Parsed string instead of user's cookies
+  @param {String} _tmp - Unparsed string instead of user's cookies
   @description Check whether a cookie exists in the current position.
-  @returns {boolean}
+  @returns {Boolean}
   ###
   has: (key, _tmp) ->
-    if _tmp 
-      _cs = parse _tmp
-    else
-      _cs = @cookies
+    _cs = if _tmp then parse _tmp else @cookies
 
     if not key or not _cs
       return false
@@ -283,7 +271,7 @@ class __cookies
   @description Returns an array of all readable cookies from this location.
   @returns {[String]}
   ###
-  keys: -> if @cookies then _.without Object.keys(@cookies), '___utcid___' else []
+  keys: -> if @cookies then Object.keys @cookies else []
 
   ###
   @function
@@ -304,52 +292,23 @@ __middlewareHandler = (req, res, self) ->
       _cookies = parse req.headers.cookie
     else
       _cookies = {}
-
-    expire = (+new Date) + self.TTL
-    if _cookies['___utcid___']
-      _storedCookies = self.collection.findOne _cookies['___utcid___']
-      unless _storedCookies
-        self.collection.insert 
-          _id:    _cookies['___utcid___']
-          toSet:  []
-          expire: expire
-      else
-        self.collection.update {_id: _cookies['___utcid___']}, $set: {expire}
-        _cookies = _.extend parse(_storedCookies.value), _cookies if _storedCookies?.value
-        if _storedCookies.toSet
-          for cookie in _storedCookies.toSet
-            res.setHeader 'Set-Cookie', cookie 
-            _cookie = parse cookie
-
-          self.collection.update {_id: _cookies['___utcid___']}, $set: toSet: []
-    else
-      _id = self.collection.insert {expire}
-      res.setHeader 'Set-Cookie', serialize '___utcid___', _id, expires: new Date expire
-      _cookies = _.extend _cookies, ___utcid___: _id
-      
-    return new __cookies _cookies, self.collection, self.TTL, self.runOnServer
+    return new __cookies _cookies, self.collection, self.TTL, self.runOnServer, res
   else
     throw new Meteor.Error '400', 'Can\'t use middleware when `runOnServer` is false.'
 
 class Cookies extends __cookies
   constructor: (opts = {}) ->
     {@runOnServer, @handler, @TTL, @auto} = opts
+
     @runOnServer ?= opts.runOnServer or true
     @TTL         ?= opts.TTL or 1000 * 60 * 60 * 24 * 31
 
     if Meteor.isServer
       if @runOnServer
-        @collection = Cookies.collection
-        @auto      ?= true
-        @handler   ?= (c) -> return
+        @auto    ?= true
+        @handler ?= (c) -> return
 
         unless Cookies.isLoadedOnServer
-          @collection._ensureIndex {expire: 1}, {expireAfterSeconds: 0, background: true}
-          @collection.deny
-            insert: -> true
-            update: -> true
-            remove: -> true
-
           if @auto
             self = @
             WebApp.connectHandlers.use (req, res, next) ->
@@ -359,24 +318,19 @@ class Cookies extends __cookies
           Cookies.isLoadedOnServer = true
     else
       super document.cookie, null, @TTL, @runOnServer
-      if @runOnServer and not @has '___utcid___'
-        @set '___utcid___', Random.id(), expires: new Date 253402300799000
 
   ###
   @function
-  @namespace __cookies
+  @namespace Cookies
   @name middleware
   @description Get Cookies instance into callback
   @returns {void}
   ###
-  middleware: (req, res, next) -> 
-    if Meteor.isServer
-      self    = @
-      return (req, res, next) -> 
-        _cookie = __middlewareHandler req, res, self
-        self.handler and self.handler(_cookie)
-        next()
+  middleware: ->
+    self = @
+    return (req, res, next) -> 
+      _cookie = __middlewareHandler req, res, self
+      self.handler and self.handler _cookie
+      next()
 
-if Meteor.isServer
-  Cookies.isLoadedOnServer = false
-  Cookies.collection       = new Mongo.Collection '___cookies___'
+Cookies.isLoadedOnServer = false if Meteor.isServer
