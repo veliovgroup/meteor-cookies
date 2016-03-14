@@ -282,7 +282,7 @@ class __cookies
   ###
   send: ->
     if @runOnServer
-      HTTP.get '/___cookie___/set', () -> return
+      HTTP.get (__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || '') + '/___cookie___/set', () -> return
     else
       throw new Meteor.Error '400', 'Can\'t send cookies on server when `runOnServer` is false.'
 
