@@ -1,6 +1,6 @@
 Isomorphic Cookies
 ========
-Isomorphic boilerplate cookie functions for client and server
+Isomorphic bulletproof cookie functions for client and server
 
  - __100% Tests coverage__
  - Works on both server and client
@@ -15,7 +15,7 @@ API:
 ========
 __Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload). To send cookies from client to server without page reload use `send()` method
 
-__Server Usage Note:__ On server Cookies implemented in middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
+__Server Usage Note:__ On server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
 
 #### Fetch cookies `new Cookies(opts)` [*Isomorphic*]
   Create new instance of Cookies
@@ -133,7 +133,7 @@ if(Meteor.isClient){
 /* Server */
 if(Meteor.isServer){
   var cookie = new Cookies({
-    auto: false, // Do not bind middleware by default
+    auto: false, // Do not bind as a middleware by default
     handler: function(cookies){
       cookies.set('gender', 'male'); //true
       cookies.get('gender'); //male
