@@ -22,7 +22,7 @@ __Server Usage Note:__ On server Cookies implemented as a middleware. To get acc
   - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
   - `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
   - `opts.TTL`  {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
-  - `opts.runOnServer` {*Boolean*} - Set to `false`to avoid server usage (by default - `true`)
+  - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
 ```javascript
 var cookies = new Cookies();
 ```
@@ -55,7 +55,7 @@ var cookies = new Cookies();
 #### `cookies.keys()` [*Isomorphic*]
   Returns an array of all readable cookies from this location
 
-#### `cookies.send()` [*Client*]
+#### `cookies.send([callback])` [*Client*]
   Send all current cookies to server
 
 

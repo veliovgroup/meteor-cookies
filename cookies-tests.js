@@ -69,6 +69,13 @@ Meteor.startup(function(){
       cookies.send()
     });
 
+    Tinytest.addAsync('cookies: send(callback)', function (test, next) {
+      cookies.send(function () {
+        test.isTrue(true);
+        next();
+      })
+    });
+
   }else{
 
     var tester = function(one, two, testname){

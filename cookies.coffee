@@ -42,16 +42,17 @@ obs-text      = %x80-FF
 fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
 
 ###
+@function
+@name parse
 @param {String} str
 @param {Object} [options]
 @return {Object}
-@description
+@summary
 Parse a cookie header.
 Parse the given cookie header string into an object
 The object has the various cookies as keys(names) => values
 @private
 ###
-
 parse = (str, options) ->
   if typeof str != 'string'
     throw new TypeError('argument str must be a string')
@@ -76,11 +77,13 @@ parse = (str, options) ->
   obj
 
 ###
+@function
+@name serialize
 @param {String} name
 @param {String} val
 @param {Object} [options]
 @return {String}
-@description
+@summary
 Serialize data into a cookie header.
 Serialize the a name value pair into a cookie string suitable for
 http headers. An optional options object specified cookie parameters.
@@ -88,7 +91,6 @@ serialize('foo', 'bar', { httpOnly: true })
   => "foo=bar; httpOnly"
 @private
 ###
-
 serialize = (name, val, options) ->
   opt = options or {}
   enc = opt.encode or encode
@@ -135,9 +137,11 @@ serialize = (name, val, options) ->
   pairs.join '; '
 
 ###
+@function
+@name tryDecode
 @param {String} str
 @param {Function} decode
-@description Try decoding a string using a decoding function.
+@summary Try decoding a string using a decoding function.
 @private
 ###
 tryDecode = (str, decode) ->
@@ -147,33 +151,42 @@ tryDecode = (str, decode) ->
     return str
   return
 
+###
+@locus Anywhere
+@class __cookies
+@param _cookies {Object|String} - Current cookies as String or Object
+@param TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
+@param runOnServer {Boolean} - Expose Cookies class to Server
+@param response {http.ServerResponse|Object} - This object is created internally by a HTTP server
+@summary Internal Class
+###
 class __cookies
-  constructor: (_cookies, @collection, @TTL, @runOnServer, @response) ->
+  constructor: (_cookies, @TTL, @runOnServer, @response) ->
     if _.isObject _cookies
       @cookies = _cookies
     else
       @cookies = parse _cookies
 
   ###
-  @function
-  @namespace __cookies
+  @locus Anywhere
+  @memberOf __cookies
   @name get
   @param {String} key  - The name of the cookie to read
   @param {String} _tmp - Unparsed string instead of user's cookies
-  @description Read a cookie. If the cookie doesn't exist a null value will be returned.
+  @summary Read a cookie. If the cookie doesn't exist a null value will be returned.
   @returns {String|null}
   ###
   get: (key, _tmp) ->
     _cs = if _tmp then parse _tmp else @cookies
 
     if not key or not _cs
-      null
+      return null
     else 
-      if _cs?[key] then _cs[key] else null
+      return if _cs?[key] then _cs[key] else null
 
   ###
-  @function
-  @namespace __cookies
+  @locus Anywhere
+  @memberOf __cookies
   @name set
   @param {String}  key          - The name of the cookie to create/overwrite
   @param {String}  value        - The value of the cookie
@@ -192,7 +205,7 @@ class __cookies
   of the current document location (string or null).
   @param {Boolean} opts.secure  - [Optional] The cookie will be transmitted only
   over secure protocol as https (boolean or null).
-  @description Create/overwrite a cookie.
+  @summary Create/overwrite a cookie.
   @returns {Boolean}
   ###
   set: (key, value, opts = {}) ->
@@ -209,13 +222,13 @@ class __cookies
         document.cookie = newCookie
       else
         @response.setHeader 'Set-Cookie', newCookie
-      true
+      return true
     else
-      false
+      return false
 
   ###
-  @function
-  @namespace __cookies
+  @locus Anywhere
+  @memberOf __cookies
   @name remove
   @param {String} key    - The name of the cookie to create/overwrite
   @param {String} path   - [Optional] The path from where the cookie will be
@@ -227,7 +240,7 @@ class __cookies
   be readable. E.g., "example.com", ".example.com" (includes all subdomains)
   or "subdomain.example.com"; if not specified, defaults to the host portion
   of the current document location (string or null).
-  @description Remove a cookie(s).
+  @summary Remove a cookie(s).
   @returns {Boolean}
   ###
   remove: (key, path = '/', domain = '') ->
@@ -240,20 +253,20 @@ class __cookies
         document.cookie = newCookie
       else
         @response.setHeader 'Set-Cookie', newCookie
-      true
+      return true
     else if @keys().length > 0 and @keys()[0] isnt ""
       @remove k for k in @keys()
-      true
+      return true
     else
-      false
+      return false
 
   ###
-  @function
-  @namespace __cookies
+  @locus Anywhere
+  @memberOf __cookies
   @name has
   @param {String} key  - The name of the cookie to create/overwrite
   @param {String} _tmp - Unparsed string instead of user's cookies
-  @description Check whether a cookie exists in the current position.
+  @summary Check whether a cookie exists in the current position.
   @returns {Boolean}
   ###
   has: (key, _tmp) ->
@@ -262,40 +275,61 @@ class __cookies
     if not key or not _cs
       return false
     else 
-      !!_cs?[key]
+      return !!_cs?[key]
 
   ###
-  @function
-  @namespace __cookies
+  @locus Anywhere
+  @memberOf __cookies
   @name keys
-  @description Returns an array of all readable cookies from this location.
+  @summary Returns an array of all readable cookies from this location.
   @returns {[String]}
   ###
   keys: -> if @cookies then Object.keys @cookies else []
 
   ###
-  @function
-  @namespace __cookies
+  @locus Client
+  @memberOf __cookies
   @name send
-  @description Send all cookies over XHR to server.
+  @param cb {Function} - Callback
+  @summary Send all cookies over XHR to server.
   @returns {void}
   ###
-  send: ->
+  send: if Meteor.isClient then (cb) ->
     if @runOnServer
-      HTTP.get (__meteor_runtime_config__.ROOT_URL_PATH_PREFIX or '') + '/___cookie___/set', () -> return
+      unless cb
+        cb = -> return
+      HTTP.get (__meteor_runtime_config__.ROOT_URL_PATH_PREFIX or '') + '/___cookie___/set', cb
     else
       throw new Meteor.Error '400', 'Can\'t send cookies on server when `runOnServer` is false.'
+    return
+  else undefined
 
+###
+@function
+@locus Server
+@summary Middleware handler
+@private
+###
 __middlewareHandler = (req, res, self) ->
   if self.runOnServer
     if req.headers?.cookie
       _cookies = parse req.headers.cookie
     else
       _cookies = {}
-    return new __cookies _cookies, self.collection, self.TTL, self.runOnServer, res
+    return new __cookies _cookies, self.TTL, self.runOnServer, res
   else
     throw new Meteor.Error '400', 'Can\'t use middleware when `runOnServer` is false.'
 
+###
+@locus Anywhere
+@class Cookies
+@param opts {Object}
+@param opts.TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
+@param opts.auto {Boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
+@param opts.handler {Function} - [Server] Middleware handler
+@param opts.runOnServer {Boolean} - Expose Cookies class to Server
+@summary Main Cookie class
+###
 class Cookies extends __cookies
   constructor: (opts = {}) ->
     {@runOnServer, @handler, @TTL, @auto} = opts
@@ -312,25 +346,33 @@ class Cookies extends __cookies
           if @auto
             self = @
             WebApp.connectHandlers.use (req, res, next) ->
-              req.Cookies = __middlewareHandler req, res, self
-              next()
+              if !!~req._parsedUrl.path.indexOf '/___cookie___/set'
+                res.setHeader 'Set-Cookie', req.headers.cookie
+                res.writeHead 200
+                res.end ''
+              else
+                req.Cookies = __middlewareHandler req, res, self
+                next()
+              return
 
           Cookies.isLoadedOnServer = true
     else
-      super document.cookie, null, @TTL, @runOnServer
+      super document.cookie, @TTL, @runOnServer
 
   ###
-  @function
-  @namespace Cookies
+  @locus Server
+  @memberOf Cookies
   @name middleware
-  @description Get Cookies instance into callback
+  @summary Get Cookies instance into callback
   @returns {void}
   ###
-  middleware: ->
+  middleware: if Meteor.isServer then ->
     self = @
     return (req, res, next) -> 
       _cookie = __middlewareHandler req, res, self
       self.handler and self.handler _cookie
       next()
+      return
+  else undefined
 
 Cookies.isLoadedOnServer = false if Meteor.isServer
