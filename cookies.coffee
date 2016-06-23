@@ -91,13 +91,12 @@ serialize('foo', 'bar', { httpOnly: true })
   => "foo=bar; httpOnly"
 @private
 ###
-serialize = (name, val, options) ->
-  opt = options or {}
-  enc = opt.encode or encode
+serialize = (name, val, opt) ->
+  opt ?= {}
   if !fieldContentRegExp.test(name)
     throw new TypeError('argument name is invalid')
-  if val
-    value = enc(val) 
+  if not _.isUndefined val
+    value = encode val
     if value and !fieldContentRegExp.test(value)
       throw new TypeError('argument val is invalid')
   else
@@ -182,7 +181,7 @@ class __cookies
     if not key or not _cs
       return null
     else 
-      return if _cs?[key] then _cs[key] else null
+      return if not _.isUndefined(_cs?[key]) then _cs[key] else null
 
   ###
   @locus Anywhere
@@ -209,13 +208,13 @@ class __cookies
   @returns {Boolean}
   ###
   set: (key, value, opts = {}) ->
-    if key and value
+    if key and not _.isUndefined value
       opts.expires ?= new Date (+new Date) + @TTL
       opts.path    ?= '/'
       opts.domain  ?= ''
       opts.secure  ?= ''
       
-      newCookie = serialize key, value, opts
+      newCookie     = serialize key, value, opts
       @cookies[key] = value
 
       if Meteor.isClient
@@ -275,7 +274,7 @@ class __cookies
     if not key or not _cs
       return false
     else 
-      return !!_cs?[key]
+      return _.has _cs, key
 
   ###
   @locus Anywhere

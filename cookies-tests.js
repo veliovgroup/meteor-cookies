@@ -13,6 +13,44 @@ Meteor.startup(function(){
       test.equal(cookies.get('testCookie'), testVal);
     });
 
+    Tinytest.add('cookies: set() / get() / has() FALSE', function (test) {
+      var testVal = false;
+      var setRes = cookies.set('testFalse', testVal);
+      test.isTrue(setRes);
+      test.isTrue(cookies.has('testFalse'));
+      test.equal(cookies.get('testFalse'), testVal);
+    });
+
+    Tinytest.add('cookies: set() / get() / has() TRUE', function (test) {
+      var testVal = true;
+      var setRes = cookies.set('testTrue', testVal);
+      test.isTrue(setRes);
+      test.isTrue(cookies.has('testTrue'));
+      test.equal(cookies.get('testTrue'), testVal);
+    });
+
+    Tinytest.add('cookies: set() / get() / has() NULL', function (test) {
+      var testVal = null;
+      var setRes = cookies.set('testNull', testVal);
+      test.isTrue(setRes);
+      test.isTrue(cookies.has('testNull'));
+      test.equal(cookies.get('testNull'), testVal);
+    });
+
+    Tinytest.add('cookies: set() / get() Object', function (test) {
+      var testVal = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
+      var setRes = cookies.set('testObject', testVal);
+      test.isTrue(setRes);
+      test.equal(cookies.get('testObject'), testVal);
+    });
+
+    Tinytest.add('cookies: set() / get() Array', function (test) {
+      var testVal = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1,2,3,'4','5']];
+      var setRes = cookies.set('testArray', testVal);
+      test.isTrue(setRes);
+      test.equal(cookies.get('testArray'), testVal);
+    });
+
     Tinytest.add('cookies: set() / get() / has() no key', function (test) {
       test.isFalse(cookies.set());
       test.isNull(cookies.get());
