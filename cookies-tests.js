@@ -1,4 +1,6 @@
 Meteor.startup(function(){
+  import { Cookies } from 'meteor/ostrio:cookies';
+
   if(Meteor.isClient){
     cookies = new Cookies();
 

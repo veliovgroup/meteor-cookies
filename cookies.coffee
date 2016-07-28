@@ -122,7 +122,7 @@ serialize = (name, val, opt) ->
   opt.expires = opt.expires or opt.expire
   if opt.expires
     if opt.expires is Infinity
-      pair.push 'Expires=Fri, 31 Dec 9999 23:59:59 GMT'
+      pairs.push 'Expires=Fri, 31 Dec 9999 23:59:59 GMT'
     else if opt.expires instanceof Date
       pairs.push 'Expires=' + opt.expires.toUTCString()
     else if _.isNumber opt.expires
@@ -375,3 +375,8 @@ class Cookies extends __cookies
   else undefined
 
 Cookies.isLoadedOnServer = false if Meteor.isServer
+
+###
+Export the Cookies class
+###
+`export { Cookies }`

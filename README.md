@@ -11,6 +11,12 @@ Install:
 meteor add ostrio:cookies
 ```
 
+ES6 Import:
+========
+```jsx
+import { Cookies } from 'meteor/ostrio:cookies';
+```
+
 API:
 ========
 __Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload). To send cookies from client to server without page reload use `send()` method
