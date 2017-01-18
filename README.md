@@ -86,7 +86,7 @@ if(Meteor.isClient){
   cookies.keys(); //['locale', 'country', 'gender']
 
   cookies.remove('locale'); //true
-  cookies.get('locale'); //null
+  cookies.get('locale'); //undefined
 
   cookies.keys(); //['country', 'gender']
 
@@ -113,7 +113,7 @@ if(Meteor.isServer){
     cookies.keys(); //['locale', 'country', 'gender']
 
     cookies.remove('locale'); //true
-    cookies.get('locale'); //null
+    cookies.get('locale'); //undefined
 
     cookies.keys(); //['country', 'gender']
 
