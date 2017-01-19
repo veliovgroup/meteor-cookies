@@ -108,15 +108,11 @@ serialize = (name, val, opt = {}) => {
 
   const pairs = [`${name}=${value}`];
 
-  if (opt.maxAge) {
-    const maxAge = opt.maxAge - 0;
-    if (isNaN(maxAge)) {
-      throw new Error('maxAge should be a Number');
-    }
-    pairs.push(`Max-Age=${maxAge}`);
+  if (_.isNumber(opt.maxAge)) {
+    pairs.push(`Max-Age=${opt.maxAge}`);
   }
 
-  if (opt.domain) {
+  if (opt.domain && _.isString(opt.domain)) {
     if (!fieldContentRegExp.test(opt.domain)) {
       throw new TypeError('option domain is invalid');
     }
@@ -125,7 +121,7 @@ serialize = (name, val, opt = {}) => {
     pairs.push('Domain=');
   }
 
-  if (opt.path) {
+  if (opt.path && _.isString(opt.path)) {
     if (!fieldContentRegExp.test(opt.path)) {
       throw new TypeError('option path is invalid');
     }
@@ -134,15 +130,15 @@ serialize = (name, val, opt = {}) => {
     pairs.push('Path=/');
   }
 
-  opt.expires = opt.expires || opt.expire;
-  if (opt.expires) {
-    if (opt.expires === Infinity) {
-      pairs.push('Expires=Fri, 31 Dec 9999 23:59:59 GMT');
-    } else if (opt.expires instanceof Date) {
-      pairs.push(`Expires=${opt.expires.toUTCString()}`);
-    } else if (_.isNumber(opt.expires)) {
-      pairs.push(`Expires=${(new Date(opt.expires)).toUTCString()}`);
-    }
+  opt.expires = opt.expires || opt.expire || false;
+  if (opt.expires === Infinity) {
+    pairs.push('Expires=Fri, 31 Dec 9999 23:59:59 GMT');
+  } else if (opt.expires instanceof Date) {
+    pairs.push(`Expires=${opt.expires.toUTCString()}`);
+  } else if (opt.expires === 0) {
+    pairs.push('Expires=0');
+  } else if (_.isNumber(opt.expires)) {
+    pairs.push(`Expires=${(new Date(opt.expires)).toUTCString()}`);
   }
 
   if (opt.httpOnly) {
@@ -155,6 +151,10 @@ serialize = (name, val, opt = {}) => {
 
   if (opt.firstPartyOnly) {
     pairs.push('First-Party-Only');
+  }
+
+  if (opt.sameSite) {
+    pairs.push('SameSite');
   }
   return pairs.join('; ');
 };
@@ -181,7 +181,7 @@ tryDecode = (str, d) => {
 @locus Anywhere
 @class __cookies
 @param _cookies {Object|String} - Current cookies as String or Object
-@param TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
+@param TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
 @param runOnServer {Boolean} - Expose Cookies class to Server
 @param response {http.ServerResponse|Object} - This object is created internally by a HTTP server
 @summary Internal Class
@@ -225,33 +225,17 @@ class __cookies {
   @locus Anywhere
   @memberOf __cookies
   @name set
-  @param {String}  key          - The name of the cookie to create/overwrite
-  @param {String}  value        - The value of the cookie
-  @param {Number}  opts.expires - [Optional] The max-age in seconds (e.g. 31536e3
-  for a year, Infinity for a never-expires cookie), or the expires date in
-  GMTString format or as Date object; if not specified the cookie will
-  expire at the end of session (number – finite or Infinity – string, Date object or null).
-  @param {String}  opts.path    - [Optional] The path from where the cookie will be
-  readable. E.g., "/", "/mydir"; if not specified, defaults to the current
-  path of the current document location (string or null). The path must be
-  absolute (see RFC 2965). For more information on how to use relative paths
-  in this argument, see: https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter
-  @param {String}  opts.domain   - [Optional] The domain from where the cookie will
-  be readable. E.g., "example.com", ".example.com" (includes all subdomains)
-  or "subdomain.example.com"; if not specified, defaults to the host portion
-  of the current document location (string or null).
-  @param {Boolean} opts.secure  - [Optional] The cookie will be transmitted only
-  over secure protocol as https (boolean or null).
+  @param {String}  key   - The name of the cookie to create/overwrite
+  @param {String}  value - The value of the cookie
+  @param {Object}  opts  - [Optional] Cookie options (see readme docs)
   @summary Create/overwrite a cookie.
   @returns {Boolean}
    */
   set(key, value, opts = {}) {
     if (key && !_.isUndefined(value)) {
-      opts.expires = _.isDate(opts.expires) ? opts.expires : new Date(+(new Date) + this.TTL);
-      opts.path    = opts.path || '/';
-      opts.domain  = opts.domain || '';
-      opts.secure  = opts.secure || '';
-
+      if (_.isNumber(this.TTL) && opts.expires === undefined) {
+        opts.expires = new Date(+new Date() + this.TTL);
+      }
       const newCookie = serialize(key, value, opts);
       this.cookies[key] = value;
       if (Meteor.isClient) {
@@ -384,7 +368,7 @@ __middlewareHandler = (req, res, self) => {
 @locus Anywhere
 @class Cookies
 @param opts {Object}
-@param opts.TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - 31 day
+@param opts.TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
 @param opts.auto {Boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
 @param opts.handler {Function} - [Server] Middleware handler
 @param opts.runOnServer {Boolean} - Expose Cookies class to Server
@@ -392,7 +376,7 @@ __middlewareHandler = (req, res, self) => {
  */
 class Cookies extends __cookies {
   constructor(opts = {}) {
-    opts.TTL = _.isNumber(opts.TTL) ? opts.TTL : (1000 * 60 * 60 * 24 * 31);
+    opts.TTL = _.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = opts.runOnServer !== false ? true : false;
 
     if (Meteor.isClient) {
@@ -418,9 +402,10 @@ class Cookies extends __cookies {
                     }
                   }
                   res.setHeader('Set-Cookie', _cArr);
-                  res.writeHead(200);
-                  res.end('');
                 }
+
+                res.writeHead(200);
+                res.end('');
               } else {
                 req.Cookies = __middlewareHandler(req, res, this);
                 next();
