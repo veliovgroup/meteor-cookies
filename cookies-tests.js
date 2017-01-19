@@ -74,6 +74,9 @@ if(Meteor.isClient){
     test.isFalse(cookies.has('asd', cookie));
   });
 
+  Tinytest.add('cookies: get() - non existent cookie', test => {
+    test.isUndefined(cookies.get('1234567890321-asdfghjk'));
+  });
 
   Tinytest.add('cookies: remove() - non existent cookie', test => {
     const removeRes = cookies.remove('1234567890asdfghjk');
@@ -179,6 +182,9 @@ if(Meteor.isClient){
         tester(removeRes, false, "cookies.remove('1234567890asdfghjk')", cookies);
       })();
 
+      (() => {
+        tester(cookies.get('1234567890asdfghjk'), undefined, "cookies.get('1234567890asdfghjk')", cookies);
+      })();
 
       (() => {
         cookies.remove();
