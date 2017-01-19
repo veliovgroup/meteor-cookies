@@ -37,7 +37,7 @@ var cookies = new Cookies();
   Read a cookie. If the cookie doesn't exist a `null` will be returned.
   - `key` {*String*} - The name of the cookie to read
 
-#### `cookies.set((key, value, [opts])` [*Isomorphic*]
+#### `cookies.set(key, value, [opts])` [*Isomorphic*]
   Create/overwrite a cookie.
   - `key` {*String*} - The name of the cookie to create/overwrite
   - `value` {*String*} - The value of the cookie
