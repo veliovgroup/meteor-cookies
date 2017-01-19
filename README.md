@@ -41,10 +41,15 @@ var cookies = new Cookies();
   Create/overwrite a cookie.
   - `key` {*String*} - The name of the cookie to create/overwrite
   - `value` {*String*} - The value of the cookie
-  - `opts.expires` {*Number*|*Date*|*Infinity*}  - [Optional] The max-age in seconds (e.g. 31536e3 for a year, Infinity for a never-expires cookie), or the expires date in GMTString format or as Date object; if not specified the cookie will expire at the end of session (number – finite or Infinity – string, Date object or null)
+  - `opts` {*Object*} - [Optional]
+  - `opts.expires` {*Number*|*Date*|*Infinity*}  - [Optional] Date, Number as milliseconds or Infinity for a never-expires cookie. If not specified the cookie will expire at the end of session (number as milliseconds or Date object)
+  - `opts.maxAge` {*Number*}  - [Optional] The max-age in seconds (e.g. 31536e3 for a year)
   - `opts.path` {*String*} - [Optional] The path from where the cookie will be readable. E.g., "/", "/mydir"; if not specified, defaults to the current path of the current document location (string or null). The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, see: https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter
   - `opts.domain` {*String*} - [Optional] The domain from where the cookie will be readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
-  - `opts.secure` {*Boolean*} - [Optional] The cookie will be transmitted only over secure protocol as https (boolean or null)
+  - `opts.secure` {*Boolean*} - [Optional] The cookie will be transmitted only over secure protocol as `https`
+  - `opts.httpOnly` {*Boolean*} - [Optional] An HttpOnly cookie cannot be accessed by client-side APIs, such as JavaScript. This restriction eliminates the threat of cookie theft via cross-site scripting (XSS)
+  - `opts.sameSite` {*Boolean*} - [Optional] Cookie which can only be sent in requests originating from the same origin as the target domain. Read more on [wikipedia](https://en.wikipedia.org/wiki/HTTP_cookie#SameSite_cookie) and [ietf](https://tools.ietf.org/html/draft-west-first-party-cookies-05)
+  - `opts.firstPartyOnly` {*Boolean*} - [Optional] *Deprecated use `sameSite` instead*
 
 #### `cookies.remove([key], [path], [domain])` [*Isomorphic*]
  - `remove()` - Remove all cookies on current domain
