@@ -117,8 +117,6 @@ serialize = (name, val, opt = {}) => {
       throw new TypeError('option domain is invalid');
     }
     pairs.push(`Domain=${opt.domain}`);
-  } else {
-    pairs.push('Domain=');
   }
 
   if (opt.path && _.isString(opt.path)) {
@@ -126,8 +124,6 @@ serialize = (name, val, opt = {}) => {
       throw new TypeError('option path is invalid');
     }
     pairs.push(`Path=${opt.path}`);
-  } else {
-    pairs.push('Path=/');
   }
 
   opt.expires = opt.expires || opt.expire || false;
