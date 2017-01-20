@@ -4,6 +4,7 @@ Isomorphic bulletproof cookie functions for client and server
 
  - __100% Tests coverage__
  - Works on both server and client
+ - IE support, thanks to [@derwok](https://github.com/derwok)
 
 Install:
 ========
