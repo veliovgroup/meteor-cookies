@@ -1,0 +1,45 @@
+{
+    "globals": {
+        "Meteor": true,
+        "$": true,
+        "_": true,
+        "HTTP": true,
+        "__meteor_runtime_config__": true,
+        "WebApp": true
+    },
+    "env": {
+        "browser": true,
+        "commonjs": true,
+        "node": true,
+        "es6": true
+    },
+    "extends": "eslint:recommended",
+    "parser": "babel-eslint",
+    "parserOptions": {
+        "sourceType": "module"
+    },
+    "rules": {
+        "indent": [
+            "error",
+            2
+        ],
+        "linebreak-style": [
+            "error",
+            "unix"
+        ],
+        "quotes": [
+            "error",
+            "single"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-console": [
+            "error", 
+            {
+                "allow": ["warn", "error", "info", "log", "trace"]
+            }
+        ]
+    }
+}

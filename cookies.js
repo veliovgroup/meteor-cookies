@@ -1,4 +1,5 @@
-const NoOp = () => {};
+const NoOp  = () => {};
+const urlRE = /\/___cookie___\/set/;
 /*
 @url https://github.com/jshttp/cookie/blob/master/index.js
 @name cookie
@@ -53,7 +54,7 @@ Parse the given cookie header string into an object
 The object has the various cookies as keys(names) => values
 @private
  */
-parse = (str, options) => {
+const parse = (str, options) => {
   if (typeof str !== 'string') {
     throw new TypeError('argument str must be a string');
   }
@@ -92,11 +93,12 @@ serialize('foo', 'bar', { httpOnly: true })
   => "foo=bar; httpOnly"
 @private
  */
-serialize = (name, val, opt = {}) => {
+const serialize = (name, val, opt = {}) => {
   if (!fieldContentRegExp.test(name)) {
     throw new TypeError('argument name is invalid');
   }
 
+  let value;
   if (!_.isUndefined(val)) {
     value = encode(val);
     if (value && !fieldContentRegExp.test(value)) {
@@ -164,7 +166,7 @@ serialize = (name, val, opt = {}) => {
 @summary Try decoding a string using a decoding function.
 @private
  */
-tryDecode = (str, d) => {
+const tryDecode = (str, d) => {
   try {
     return d(str);
   } catch (e) {
@@ -347,7 +349,7 @@ class __cookies {
 @summary Middleware handler
 @private
  */
-__middlewareHandler = (req, res, self) => {
+const __middlewareHandler = (req, res, self) => {
   let _cookies = {};
   if (self.runOnServer) {
     if (req.headers && req.headers.cookie) {
@@ -386,7 +388,7 @@ class Cookies extends __cookies {
         if (!Cookies.isLoadedOnServer) {
           if (opts.auto) {
             WebApp.connectHandlers.use((req, res, next) => {
-              if (!!~req._parsedUrl.path.indexOf('/___cookie___/set')) {
+              if (urlRE.test(req._parsedUrl.path)) {
                 if (req.headers && req.headers.cookie) {
                   const _cObj = parse(req.headers.cookie);
                   const _cArr = [];
