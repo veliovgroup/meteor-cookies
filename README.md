@@ -30,8 +30,9 @@ __Server Usage Note:__ On server Cookies implemented as a middleware. To get acc
   - `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
   - `opts.TTL`  {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
   - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
-```javascript
-var cookies = new Cookies();
+```jxs
+import { Cookies } from 'meteor/ostrio:cookies';
+const cookies = new Cookies();
 ```
 
 #### `cookies.get(key)` [*Isomorphic*]
@@ -74,12 +75,13 @@ var cookies = new Cookies();
 
 Examples:
 =========
-```javascript
+```jsx
 /* Both Client & Server */
-var cookies = new Cookies()
+import { Cookies } from 'meteor/ostrio:cookies';
+const cookies = new Cookies()
 
 /* Client */
-if(Meteor.isClient){
+if (Meteor.isClient) {
   cookies.set('locale', 'en'); //true
   cookies.set('country', 'usa'); //true
   cookies.set('gender', 'male'); //true
@@ -103,7 +105,7 @@ if(Meteor.isClient){
 }
 
 /* Server */
-if(Meteor.isServer){
+if (Meteor.isServer) {
   WebApp.connectHandlers.use(function(req, res, next){
     cookies = req.Cookies;
 
@@ -132,10 +134,13 @@ if(Meteor.isServer){
 ```
 
 ### Alternate Usage
-```javascript
+```jsx
+/* Both Client & Server */
+import { Cookies } from 'meteor/ostrio:cookies';
+
 /* Client */
-if(Meteor.isClient){
-  var cookies = new Cookies()
+if (Meteor.isClient) {
+  const cookies = new Cookies()
   cookies.set('gender', 'male'); //true
   cookies.get('gender'); //male
   cookies.has('city'); //false
@@ -143,8 +148,8 @@ if(Meteor.isClient){
 }
 
 /* Server */
-if(Meteor.isServer){
-  var cookie = new Cookies({
+if (Meteor.isServer) {
+  const cookie = new Cookies({
     auto: false, // Do not bind as a middleware by default
     handler: function(cookies){
       cookies.set('gender', 'male'); //true
