@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '2.1.3',
+  version: '2.2.0',
   summary: 'Isomorphic bulletproof Server and Client cookie functions',
   git: 'https://github.com/VeliovGroup/Meteor-Cookies',
   documentation: 'README.md'
@@ -12,7 +12,6 @@ Package.onUse(function(api) {
   api.use('webapp', 'server');
   api.use('http', 'client');
   api.mainModule('cookies.js', ['client', 'server']);
-  api.export('Cookies');
 });
 
 Package.onTest(function(api) {

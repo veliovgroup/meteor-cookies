@@ -1,7 +1,7 @@
 import { Cookies } from 'meteor/ostrio:cookies';
 
 if(Meteor.isClient){
-  cookies = new Cookies();
+  const cookies = new Cookies();
 
   Tinytest.add('From Server to Client', test => {
     test.equal(cookies.get('FORCLIENT'), '_form_server_to_client_tests_');
@@ -19,6 +19,23 @@ if(Meteor.isClient){
     const setRes = cookies.set('testCookie', testVal);
     test.isTrue(setRes);
     test.equal(cookies.get('testCookie'), testVal);
+  });
+
+  Tinytest.add('cookies: set() / get() / has() - Unicode', function (test) {
+    const testVal = '⦶';
+    const setRes = cookies.set('⦁', testVal);
+    test.isTrue(setRes);
+    test.isTrue(cookies.has('⦁'));
+    test.isFalse(cookies.has('⦁⦁⦁'));
+    test.equal(cookies.get('⦁'), testVal);
+  });
+
+  Tinytest.add('cookies: set() / get() / has() - Unicode 2', function (test) {
+    const testVal = '小飼弾\n小飼弾';
+    const setRes = cookies.set('小飼弾', testVal);
+    test.isTrue(setRes);
+    test.isTrue(cookies.has('小飼弾'));
+    test.equal(cookies.get('小飼弾'), testVal);
   });
 
   Tinytest.add('cookies: set() / get() / has() - FALSE', test => {
@@ -140,12 +157,27 @@ if(Meteor.isClient){
     }
   };
 
-  _cookie = new Cookies();
-
-  cookie = new Cookies({
+  const cookie = new Cookies({
     auto: false,
     handler(cookies) {
       tester(cookies.get('FORSERVERTEST'), '_form_client_to_server_tests_', 'From Client to Server [First Time should FAIL]');
+
+      (() => {
+        const testVal = '⦶';
+        const setRes = cookies.set('⦁', testVal);
+        tester(setRes, true, 'Unicode .set()', cookies);
+        tester(cookies.has('⦁'), true, 'Unicode .has()', cookies);
+        tester(cookies.has('⦁⦁⦁'), false, 'Unicode .has() non-existent', cookies);
+        tester(cookies.get('⦁'), testVal, 'Unicode .get()', cookies);
+      })();
+
+      (() => {
+        const testVal = '小飼弾\n小飼弾';
+        const setRes = cookies.set('小飼弾', testVal);
+        tester(setRes, true, 'Unicode 2 .set()', cookies);
+        tester(cookies.has('小飼弾'), true, 'Unicode 2 .has()', cookies);
+        tester(cookies.get('小飼弾'), testVal, 'Unicode 2 .get()', cookies);
+      })();
 
       (() => {
         const testVal = void 0;
@@ -169,11 +201,11 @@ if(Meteor.isClient){
 
       (() => {
         const testVal = 'customCookieVal';
-        const cookie = `customCookie=${testVal}; `;
-        tester(cookies.get('customCookie', cookie), testVal, "cookies.get('customCookie')", cookies);
-        tester(cookies.get('asd', cookie), undefined, "cookies.get('asd')", cookies);
-        tester(cookies.has('customCookie', cookie), true, "cookies.has('customCookie')", cookies);
-        tester(cookies.has('asd', cookie), false, "cookies.has('asd')", cookies);
+        const _cookie = `customCookie=${testVal}; `;
+        tester(cookies.get('customCookie', _cookie), testVal, "cookies.get('customCookie')", cookies);
+        tester(cookies.get('asd', _cookie), undefined, "cookies.get('asd')", cookies);
+        tester(cookies.has('customCookie', _cookie), true, "cookies.has('customCookie')", cookies);
+        tester(cookies.has('asd', _cookie), false, "cookies.has('asd')", cookies);
       })();
 
 

@@ -56,11 +56,14 @@ The object has the various cookies as keys(names) => values
  */
 const parse = (str, options) => {
   if (typeof str !== 'string') {
-    throw new TypeError('argument str must be a string');
+    throw new Meteor.Error(404, 'argument str must be a string');
   }
   const obj = {};
   const opt = options || {};
-  let val, key, eqIndx;
+  let val;
+  let key;
+  let eqIndx;
+
   str.split(pairSplitRegExp).forEach((pair) => {
     eqIndx = pair.indexOf('=');
     if (eqIndx < 0) {
@@ -93,16 +96,20 @@ serialize('foo', 'bar', { httpOnly: true })
   => "foo=bar; httpOnly"
 @private
  */
-const serialize = (name, val, opt = {}) => {
-  if (!fieldContentRegExp.test(name)) {
-    throw new TypeError('argument name is invalid');
+const serialize = (key, val, opt = {}) => {
+  let name;
+
+  if (!fieldContentRegExp.test(key)) {
+    name = escape(key);
+  } else {
+    name = key;
   }
 
   let value;
   if (!_.isUndefined(val)) {
     value = encode(val);
     if (value && !fieldContentRegExp.test(value)) {
-      throw new TypeError('argument val is invalid');
+      value = escape(value);
     }
   } else {
     value = '';
@@ -116,14 +123,14 @@ const serialize = (name, val, opt = {}) => {
 
   if (opt.domain && _.isString(opt.domain)) {
     if (!fieldContentRegExp.test(opt.domain)) {
-      throw new TypeError('option domain is invalid');
+      throw new Meteor.Error(404, 'option domain is invalid');
     }
     pairs.push(`Domain=${opt.domain}`);
   }
 
   if (opt.path && _.isString(opt.path)) {
     if (!fieldContentRegExp.test(opt.path)) {
-      throw new TypeError('option path is invalid');
+      throw new Meteor.Error(404, 'option path is invalid');
     }
     pairs.push(`Path=${opt.path}`);
   }
@@ -154,6 +161,7 @@ const serialize = (name, val, opt = {}) => {
   if (opt.sameSite) {
     pairs.push('SameSite');
   }
+
   return pairs.join('; ');
 };
 
@@ -280,7 +288,7 @@ class __cookies {
       return true;
     } else if (!key && this.keys().length > 0 && this.keys()[0] !== '') {
       const keys = Object.keys(this.cookies);
-      for (var i = 0; i < keys.length; i++) {
+      for (let i = 0; i < keys.length; i++) {
         this.remove(keys[i]);
       }
       return true;
@@ -334,7 +342,7 @@ class __cookies {
     }
 
     if (this.runOnServer) {
-      HTTP.get(`${__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`, cb);
+      HTTP.get(`${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`, cb);
     } else {
       cb(new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.'));
     }
@@ -375,7 +383,7 @@ const __middlewareHandler = (req, res, self) => {
 class Cookies extends __cookies {
   constructor(opts = {}) {
     opts.TTL = _.isNumber(opts.TTL) ? opts.TTL : false;
-    opts.runOnServer = opts.runOnServer !== false ? true : false;
+    opts.runOnServer = (opts.runOnServer !== false) ? true : false;
 
     if (Meteor.isClient) {
       super(document.cookie, opts.TTL, opts.runOnServer);
@@ -384,21 +392,25 @@ class Cookies extends __cookies {
       opts.auto        = opts.auto !== false ? true : false;
       this.handler     = opts.handler || (() => {});
       this.runOnServer = opts.runOnServer;
+
       if (this.runOnServer) {
         if (!Cookies.isLoadedOnServer) {
           if (opts.auto) {
             WebApp.connectHandlers.use((req, res, next) => {
               if (urlRE.test(req._parsedUrl.path)) {
                 if (req.headers && req.headers.cookie) {
-                  const _cObj = parse(req.headers.cookie);
-                  const _cArr = [];
+                  const _cObj  = parse(req.headers.cookie);
+                  const _cKeys = Object.keys(_cObj);
+                  const _cArr  = [];
                   let   _cStr;
-                  for (const _cKey in _cObj) {
-                    _cStr = serialize(_cKey, _cObj[_cKey]);
+
+                  for (let i = 0; i < _cKeys.length; i++) {
+                    _cStr = serialize(_cKeys[i], _cObj[_cKeys[i]]);
                     if (!~_cArr.indexOf(_cStr)) {
                       _cArr.push(_cStr);
                     }
                   }
+
                   res.setHeader('Set-Cookie', _cArr);
                 }
 
@@ -426,8 +438,7 @@ class Cookies extends __cookies {
    */
   middleware() {
     if (!Meteor.isServer) {
-      console.error('[ostrio:cookies] Can\'t use `.middleware()` on Client, it\'s Server only!');
-      return NoOp;
+      throw new Meteor.Error(500, '[ostrio:cookies] Can\'t use `.middleware()` on Client, it\'s Server only!');
     }
 
     return (req, res, next) => {
