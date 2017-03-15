@@ -30,7 +30,7 @@ __Server Usage Note:__ On server Cookies implemented as a middleware. To get acc
   - `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
   - `opts.TTL`  {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
   - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
-```jxs
+```jsx
 import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies();
 ```
