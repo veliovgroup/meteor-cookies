@@ -1,3 +1,12 @@
+import { _ }      from 'meteor/underscore';
+import { Meteor } from 'meteor/meteor';
+
+if (Meteor.isServer) {
+  import { WebApp } from 'meteor/webapp';
+} else {
+  import { HTTP } from 'meteor/http';
+}
+
 const NoOp  = () => {};
 const urlRE = /\/___cookie___\/set/;
 /*
