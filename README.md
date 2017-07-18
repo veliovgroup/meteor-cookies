@@ -5,7 +5,7 @@ Isomorphic bulletproof cookie functions for client and server
  - __100% Tests coverage__
  - Works on both server and client
  - Support for unicode
- - Support for *Strings*, *Boolean*, *Objects* and *Arrays* as a values
+ - Support for *String*, *Boolean*, *Object* and *Array* as a values
  - IE support, thanks to [@derwok](https://github.com/derwok)
 
 Install:
@@ -22,9 +22,9 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 API:
 ========
-__Note:__ On server, cookies will be set __only__ after headers is sent (on next route or page reload). To send cookies from client to server without page reload use `send()` method
+__Note:__ On a server, cookies will be set __only__ after headers are sent (on next route or page reload). To send cookies from *Client* to *Server* without a page reload use `send()` method.
 
-__Server Usage Note:__ On server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
+__Server Usage Note:__ On a server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
 
 #### Fetch cookies `new Cookies(opts)` [*Isomorphic*]
 Create new instance of Cookies

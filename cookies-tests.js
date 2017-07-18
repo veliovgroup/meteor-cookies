@@ -38,6 +38,14 @@ if(Meteor.isClient){
     test.equal(cookies.get('小飼弾'), testVal);
   });
 
+  Tinytest.add('cookies: set() / get() / has() - Cyrillic', function (test) {
+    const testVal = 'йцукен\nнекуцй';
+    const setRes = cookies.set('фывфыв', testVal);
+    test.isTrue(setRes);
+    test.isTrue(cookies.has('фывфыв'));
+    test.equal(cookies.get('фывфыв'), testVal);
+  });
+
   Tinytest.add('cookies: set() / get() / has() - FALSE', test => {
     const testVal = false;
     const setRes = cookies.set('testFalse', testVal);
@@ -177,6 +185,14 @@ if(Meteor.isClient){
         tester(setRes, true, 'Unicode 2 .set()', cookies);
         tester(cookies.has('小飼弾'), true, 'Unicode 2 .has()', cookies);
         tester(cookies.get('小飼弾'), testVal, 'Unicode 2 .get()', cookies);
+      })();
+
+      (() => {
+        const testVal = 'йцукен\nнекуцй';
+        const setRes = cookies.set('фывфыв', testVal);
+        tester(setRes, true, 'Cyrillic .set()', cookies);
+        tester(cookies.has('фывфыв'), true, 'Cyrillic .has()', cookies);
+        tester(cookies.get('фывфыв'), testVal, 'Cyrillic .get()', cookies);
       })();
 
       (() => {

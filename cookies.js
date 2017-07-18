@@ -1,10 +1,13 @@
 import { _ }      from 'meteor/underscore';
 import { Meteor } from 'meteor/meteor';
 
+let HTTP;
+let WebApp;
+
 if (Meteor.isServer) {
-  import { WebApp } from 'meteor/webapp';
+  WebApp = require('meteor/webapp').WebApp;
 } else {
-  import { HTTP } from 'meteor/http';
+  HTTP = require('meteor/http').HTTP;
 }
 
 const NoOp  = () => {};
