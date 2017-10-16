@@ -3,7 +3,7 @@ Isomorphic Cookies
 Isomorphic bulletproof cookie functions for client and server
 
  - __100% Tests coverage__
- - Works on both server and client
+ - Works on both *Server* and *Client*
  - Support for unicode
  - Support for *String*, *Boolean*, *Object* and *Array* as a values
  - IE support, thanks to [@derwok](https://github.com/derwok)
@@ -16,7 +16,7 @@ meteor add ostrio:cookies
 
 ES6 Import:
 ========
-```jsx
+```js
 import { Cookies } from 'meteor/ostrio:cookies';
 ```
 
@@ -32,7 +32,7 @@ Create new instance of Cookies
   - `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
   - `opts.TTL` {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
   - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
-```jsx
+```js
 import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies();
 ```
@@ -75,7 +75,7 @@ Send all current cookies to server
 
 Examples:
 =========
-```jsx
+```js
 /* Both Client & Server */
 import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies();
@@ -134,7 +134,7 @@ if (Meteor.isServer) {
 ```
 
 ### Alternate Usage
-```jsx
+```js
 /* Both Client & Server */
 import { Cookies } from 'meteor/ostrio:cookies';
 
@@ -162,3 +162,9 @@ if (Meteor.isServer) {
   WebApp.connectHandlers.use(cookie.middleware());
 }
 ```
+
+Support this project:
+======
+This project wouldn't be possible without [ostr.io](https://ostr.io).
+
+Using [ostr.io](https://ostr.io) you are not only [protecting domain names](https://ostr.io/info/domain-names-protection), [monitoring websites and servers](https://ostr.io/info/monitoring), using [Prerendering for better SEO](https://ostr.io/info/prerendering) of your JavaScript website, but support our Open Source activity, and great packages like this one could be available for free.
