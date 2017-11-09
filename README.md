@@ -1,12 +1,13 @@
 Isomorphic Cookies
 ========
-Isomorphic bulletproof cookie functions for client and server
+Isomorphic bulletproof cookie functions for *Client* and *Server*.
 
  - __100% Tests coverage__
  - Works on both *Server* and *Client*
  - Support for unicode
  - Support for *String*, *Boolean*, *Object* and *Array* as a values
  - IE support, thanks to [@derwok](https://github.com/derwok)
+ - Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/VeliovGroup/Client-Storage#persistent-client-browser-storage)
 
 Install:
 ========
