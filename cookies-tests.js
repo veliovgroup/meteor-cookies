@@ -1,4 +1,12 @@
+import { EJSON } from 'meteor/ejson';
+import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
+
+let WebApp;
+
+if (Meteor.isServer) {
+  WebApp = require('meteor/webapp').WebApp;
+}
 
 if(Meteor.isClient){
   const cookies = new Cookies();
