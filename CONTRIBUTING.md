@@ -21,4 +21,4 @@
      - Give a short description what you have changed/added and why
      - Make sure you're using correct markdown markup
      - Make sure all code blocks starts with triple ``` (*backtick*) and have a syntax tag, for more read [this docs](https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting)
-     - Post your addition/changes as issue ticket, we will manage it
+     - Post addition/changes as issue ticket, we will manage it
