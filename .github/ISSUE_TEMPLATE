@@ -1,8 +1,14 @@
 ### I'm having an issue:
-  - Give expressive description
+  - Give an expressive description of what is went wrong
   - Version of `ostrio:cookies` you're experiencing this issue
   - Version of `Meteor` you're experiencing this issue
+  - Is it *Client* or *Server* issue?
+  - Where this issue appears? OS (Mac/Win/Linux)? Browser name and its version?
   - If you're getting an error (exception), please provide full error log (output in console) as file or screenshot
+
+### I had an issue and I've solved it on my own:
+  - Provide a description of steps that you've followed to solve the problem
+  - Provide links to websites and/or pages with the information that helped you (*if there are any*)
 
 ### I have a suggestion:
   - Describe your feature / request
