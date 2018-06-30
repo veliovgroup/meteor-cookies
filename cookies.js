@@ -1,4 +1,3 @@
-import { _ }      from 'meteor/underscore';
 import { Meteor } from 'meteor/meteor';
 
 let HTTP;
@@ -12,6 +11,21 @@ if (Meteor.isServer) {
 
 const NoOp  = () => {};
 const urlRE = /\/___cookie___\/set/;
+const helpers = {
+  isUndefined(obj) {
+    return obj === void 0;
+  },
+  isObject(obj) {
+    return obj === Object(obj);
+  }
+};
+const _helpers = ['String', 'Number'];
+for (let i = 0; i < _helpers.length; i++) {
+  helpers['is' + _helpers[i]] = function (obj) {
+    return toString.call(obj) == '[object ' + _helpers[i] + ']';
+  };
+}
+
 /*
  * @url https://github.com/jshttp/cookie/blob/master/index.js
  * @name cookie
@@ -133,7 +147,7 @@ const serialize = (key, val, opt = {}) => {
   }
 
   let value;
-  if (!_.isUndefined(val)) {
+  if (!helpers.isUndefined(val)) {
     value = encode(val);
     if (value && !fieldContentRegExp.test(value)) {
       value = escape(value);
@@ -144,18 +158,18 @@ const serialize = (key, val, opt = {}) => {
 
   const pairs = [`${name}=${value}`];
 
-  if (_.isNumber(opt.maxAge)) {
+  if (helpers.isNumber(opt.maxAge)) {
     pairs.push(`Max-Age=${opt.maxAge}`);
   }
 
-  if (opt.domain && _.isString(opt.domain)) {
+  if (opt.domain && helpers.isString(opt.domain)) {
     if (!fieldContentRegExp.test(opt.domain)) {
       throw new Meteor.Error(404, 'option domain is invalid');
     }
     pairs.push(`Domain=${opt.domain}`);
   }
 
-  if (opt.path && _.isString(opt.path)) {
+  if (opt.path && helpers.isString(opt.path)) {
     if (!fieldContentRegExp.test(opt.path)) {
       throw new Meteor.Error(404, 'option path is invalid');
     }
@@ -169,7 +183,7 @@ const serialize = (key, val, opt = {}) => {
     pairs.push(`Expires=${opt.expires.toUTCString()}`);
   } else if (opt.expires === 0) {
     pairs.push('Expires=0');
-  } else if (_.isNumber(opt.expires)) {
+  } else if (helpers.isNumber(opt.expires)) {
     pairs.push(`Expires=${(new Date(opt.expires)).toUTCString()}`);
   }
 
@@ -207,7 +221,7 @@ class __cookies {
     this.response    = response;
     this.runOnServer = runOnServer;
 
-    if (_.isObject(_cookies)) {
+    if (helpers.isObject(_cookies)) {
       this.cookies = _cookies;
     } else {
       this.cookies = parse(_cookies);
@@ -247,8 +261,8 @@ class __cookies {
    * @returns {Boolean}
    */
   set(key, value, opts = {}) {
-    if (key && !_.isUndefined(value)) {
-      if (_.isNumber(this.TTL) && opts.expires === undefined) {
+    if (key && !helpers.isUndefined(value)) {
+      if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
         opts.expires = new Date(+new Date() + this.TTL);
       }
       const newCookie = serialize(key, value, opts);
@@ -390,7 +404,7 @@ const __middlewareHandler = (req, res, self) => {
  */
 class Cookies extends __cookies {
   constructor(opts = {}) {
-    opts.TTL = _.isNumber(opts.TTL) ? opts.TTL : false;
+    opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
 
     if (Meteor.isClient) {

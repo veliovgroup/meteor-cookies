@@ -3,7 +3,7 @@
 Isomorphic bulletproof cookie functions for *Client* and *Server*.
 
   - __100% Tests coverage__
-  - No external dependencies
+  - No external dependencies, no `underscore`, no `jQuery`, no `Blaze`
   - Works on both *Server* and *Client*
   - Support for unicode
   - Support for *String*, *Boolean*, *Object* and *Array* as a values
