@@ -3,30 +3,42 @@ import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
 
 let WebApp;
+const antiCircular = (_obj) => {
+  const object = Object.assign({}, _obj);
+  const cache  = new Map();
+  return JSON.parse(JSON.stringify(object, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.get(value)) {
+        return void 0;
+      }
+      cache.set(value, true);
+    }
+    return value;
+  }));
+};
 
-if (Meteor.isServer) {
-  WebApp = require('meteor/webapp').WebApp;
-}
-
-if(Meteor.isClient){
+if (Meteor.isClient) {
   const cookies = new Cookies();
 
   Tinytest.add('From Server to Client', test => {
-    test.equal(cookies.get('FORCLIENT'), '_form_server_to_client_tests_');
+    test.equal(cookies.get('FORCLIENT', document.cookie), '_form_server_to_client_tests_', 'document.cookie');
+    test.equal(cookies.get('FORCLIENT'), '_form_server_to_client_tests_', 'js');
   });
 
   Tinytest.add('cookies: set() - empty value', test => {
     const testVal = void 0;
     const setRes = cookies.set('testCookieEmpty', testVal);
     test.isFalse(setRes);
-    test.equal(cookies.get('testCookieEmpty'), testVal);
+    test.equal(cookies.get('testCookieEmpty', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testCookieEmpty'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() - String', test => {
     const testVal = 'this is test value';
     const setRes = cookies.set('testCookie', testVal);
     test.isTrue(setRes);
-    test.equal(cookies.get('testCookie'), testVal);
+    test.equal(cookies.get('testCookie', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testCookie'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - Unicode', function (test) {
@@ -35,7 +47,8 @@ if(Meteor.isClient){
     test.isTrue(setRes);
     test.isTrue(cookies.has('⦁'));
     test.isFalse(cookies.has('⦁⦁⦁'));
-    test.equal(cookies.get('⦁'), testVal);
+    test.equal(cookies.get('⦁', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('⦁'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - Unicode 2', function (test) {
@@ -43,7 +56,8 @@ if(Meteor.isClient){
     const setRes = cookies.set('小飼弾', testVal);
     test.isTrue(setRes);
     test.isTrue(cookies.has('小飼弾'));
-    test.equal(cookies.get('小飼弾'), testVal);
+    test.equal(cookies.get('小飼弾', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('小飼弾'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - Cyrillic', function (test) {
@@ -51,7 +65,8 @@ if(Meteor.isClient){
     const setRes = cookies.set('фывфыв', testVal);
     test.isTrue(setRes);
     test.isTrue(cookies.has('фывфыв'));
-    test.equal(cookies.get('фывфыв'), testVal);
+    test.equal(cookies.get('фывфыв', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('фывфыв'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - FALSE', test => {
@@ -59,7 +74,8 @@ if(Meteor.isClient){
     const setRes = cookies.set('testFalse', testVal);
     test.isTrue(setRes);
     test.isTrue(cookies.has('testFalse'));
-    test.equal(cookies.get('testFalse'), testVal);
+    test.equal(cookies.get('testFalse', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testFalse'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - TRUE', test => {
@@ -67,7 +83,8 @@ if(Meteor.isClient){
     const setRes = cookies.set('testTrue', testVal);
     test.isTrue(setRes);
     test.isTrue(cookies.has('testTrue'));
-    test.equal(cookies.get('testTrue'), testVal);
+    test.equal(cookies.get('testTrue', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testTrue'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - NULL', test => {
@@ -75,21 +92,44 @@ if(Meteor.isClient){
     const setRes = cookies.set('testNull', testVal);
     test.isTrue(setRes);
     test.isTrue(cookies.has('testNull'));
-    test.equal(cookies.get('testNull'), testVal);
+    test.equal(cookies.get('testNull', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testNull'), testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() - Object', test => {
     const testVal = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
     const setRes = cookies.set('testObject', testVal);
     test.isTrue(setRes);
-    test.equal(cookies.get('testObject'), testVal);
+    test.equal(cookies.get('testObject', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testObject'), testVal, 'js');
+  });
+
+  Tinytest.add('cookies: set() / get() - Object Circle', test => {
+    const testVal = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
+    testVal.slef = testVal;
+    const setRes = cookies.set('testObject', testVal);
+    test.isTrue(setRes);
+    const _testVal = antiCircular(Object.assign({}, testVal));
+    test.equal(cookies.get('testObject', document.cookie), _testVal, 'document.cookie');
+    test.equal(cookies.get('testObject'), _testVal, 'js');
   });
 
   Tinytest.add('cookies: set() / get() - Array', test => {
     const testVal = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']];
     const setRes = cookies.set('testArray', testVal);
     test.isTrue(setRes);
-    test.equal(cookies.get('testArray'), testVal);
+    test.equal(cookies.get('testArray', document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get('testArray'), testVal, 'js');
+  });
+
+  Tinytest.add('cookies: set() / get() - Array Circle', test => {
+    const obj = {asd: 'dsa', arr: [1, 2, 3]};
+    obj.slef = ['a', obj, 'c'];
+    const testVal = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5'], obj];
+    const setRes = cookies.set('testArray', testVal);
+    test.isTrue(setRes);
+    test.equal(cookies.get('testArray', document.cookie), antiCircular(testVal), 'document.cookie');
+    test.equal(cookies.get('testArray'), antiCircular(testVal), 'js');
   });
 
   Tinytest.add('cookies: set() / get() / has() - no key', test => {
@@ -108,7 +148,8 @@ if(Meteor.isClient){
   });
 
   Tinytest.add('cookies: get() - non existent cookie', test => {
-    test.isUndefined(cookies.get('1234567890321-asdfghjk'));
+    test.isUndefined(cookies.get('1234567890321-asdfghjk', document.cookie), 'document.cookie');
+    test.isUndefined(cookies.get('1234567890321-asdfghjk'), 'js');
   });
 
   Tinytest.add('cookies: remove() - non existent cookie', test => {
@@ -165,6 +206,8 @@ if(Meteor.isClient){
     });
   });
 } else {
+  WebApp = require('meteor/webapp').WebApp;
+
   const tester = (one, two, testname) => {
     if(EJSON.equals(one, two)){
       console.info(`[${testname}] PASSED`);

@@ -15,11 +15,15 @@ const helpers = {
   isUndefined(obj) {
     return obj === void 0;
   },
-  isObject(obj) {
-    return obj === Object(obj);
+  isArray(obj) {
+    return Array.isArray(obj);
+  },
+  clone(obj) {
+    if (!this.isObject(obj)) return obj;
+    return this.isArray(obj) ? obj.slice() : Object.assign({}, obj);
   }
 };
-const _helpers = ['String', 'Number'];
+const _helpers = ['Number', 'Object'];
 for (let i = 0; i < _helpers.length; i++) {
   helpers['is' + _helpers[i]] = function (obj) {
     return Object.prototype.toString.call(obj) === '[object ' + _helpers[i] + ']';
@@ -112,6 +116,7 @@ const parse = (str, options) => {
       return;
     }
     key = pair.substr(0, eqIndx).trim();
+    key = tryDecode(unescape(key), (opt.decode || decode));
     val = pair.substr(++eqIndx, pair.length).trim();
     if (val[0] === '"') {
       val = val.slice(1, -1);
@@ -125,11 +130,30 @@ const parse = (str, options) => {
 
 /*
  * @function
+ * @name antiCircular
+ * @param data {Object} - Circular or any other object which needs to be non-circular
+ */
+const antiCircular = (_obj) => {
+  const object = helpers.clone(_obj);
+  const cache  = new Map();
+  return JSON.stringify(object, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.get(value)) {
+        return void 0;
+      }
+      cache.set(value, true);
+    }
+    return value;
+  });
+};
+
+/*
+ * @function
  * @name serialize
  * @param {String} name
  * @param {String} val
  * @param {Object} [options]
- * @return {String}
+ * @return { cookieString: String, sanitizedValue: Mixed }
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
@@ -146,11 +170,18 @@ const serialize = (key, val, opt = {}) => {
     name = key;
   }
 
-  let value;
-  if (!helpers.isUndefined(val)) {
-    value = encode(val);
-    if (value && !fieldContentRegExp.test(value)) {
-      value = escape(value);
+  let sanitizedValue = val;
+  let value = val;
+  if (!helpers.isUndefined(value)) {
+    if (helpers.isObject(value) || helpers.isArray(value)) {
+      const stringified = antiCircular(value);
+      value = encode(`JSON.parse(${stringified})`);
+      sanitizedValue = JSON.parse(stringified);
+    } else {
+      value = encode(value);
+      if (value && !fieldContentRegExp.test(value)) {
+        value = escape(value);
+      }
     }
   } else {
     value = '';
@@ -162,14 +193,14 @@ const serialize = (key, val, opt = {}) => {
     pairs.push(`Max-Age=${opt.maxAge}`);
   }
 
-  if (opt.domain && helpers.isString(opt.domain)) {
+  if (opt.domain && typeof opt.domain === 'string') {
     if (!fieldContentRegExp.test(opt.domain)) {
       throw new Meteor.Error(404, 'option domain is invalid');
     }
     pairs.push(`Domain=${opt.domain}`);
   }
 
-  if (opt.path && helpers.isString(opt.path)) {
+  if (opt.path && typeof opt.path === 'string') {
     if (!fieldContentRegExp.test(opt.path)) {
       throw new Meteor.Error(404, 'option path is invalid');
     }
@@ -203,7 +234,31 @@ const serialize = (key, val, opt = {}) => {
     pairs.push('SameSite');
   }
 
-  return pairs.join('; ');
+  return { cookieString: pairs.join('; '), sanitizedValue };
+};
+
+const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
+const isTypedRegEx = /false|true|null|undefined/;
+const deserialize = (string) => {
+  if (typeof string !== 'string') {
+    return string;
+  }
+
+  if (isStringifiedRegEx.test(string)) {
+    let obj = string.match(isStringifiedRegEx)[1];
+    if (obj) {
+      try {
+        return JSON.parse(decode(obj));
+      } catch (e) {
+        console.error('[ostrio:cookies] [.get()] [deserialize()] Exception:', e, string, obj);
+        return string;
+      }
+    }
+    return string;
+  } else if (isTypedRegEx.test(string)) {
+    return JSON.parse(string);
+  }
+  return string;
 };
 
 /*
@@ -238,13 +293,13 @@ class __cookies {
    * @returns {String|void}
    */
   get(key, _tmp) {
-    const _cs = _tmp ? parse(_tmp) : this.cookies;
-    if (!key || !_cs) {
+    const cookieString = _tmp ? parse(_tmp) : this.cookies;
+    if (!key || !cookieString) {
       return void 0;
     }
 
-    if (_cs.hasOwnProperty(key)) {
-      return _cs[key];
+    if (cookieString.hasOwnProperty(key)) {
+      return deserialize(cookieString[key]);
     }
 
     return void 0;
@@ -265,12 +320,12 @@ class __cookies {
       if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
         opts.expires = new Date(+new Date() + this.TTL);
       }
-      const newCookie = serialize(key, value, opts);
-      this.cookies[key] = value;
+      const { cookieString, sanitizedValue } = serialize(key, value, opts);
+      this.cookies[key] = sanitizedValue;
       if (Meteor.isClient) {
-        document.cookie = newCookie;
+        document.cookie = cookieString;
       } else {
-        this.response.setHeader('Set-Cookie', newCookie);
+        this.response.setHeader('Set-Cookie', cookieString);
       }
       return true;
     }
@@ -296,7 +351,7 @@ class __cookies {
    */
   remove(key, path = '/', domain = '') {
     if (key && this.cookies.hasOwnProperty(key)) {
-      const newCookie = serialize(key, '', {
+      const { cookieString } = serialize(key, '', {
         domain,
         path,
         expires: new Date(0)
@@ -304,9 +359,9 @@ class __cookies {
 
       delete this.cookies[key];
       if (Meteor.isClient) {
-        document.cookie = newCookie;
+        document.cookie = cookieString;
       } else {
-        this.response.setHeader('Set-Cookie', newCookie);
+        this.response.setHeader('Set-Cookie', cookieString);
       }
       return true;
     } else if (!key && this.keys().length > 0 && this.keys()[0] !== '') {
@@ -329,12 +384,12 @@ class __cookies {
    * @returns {Boolean}
    */
   has(key, _tmp) {
-    const _cs = _tmp ? parse(_tmp) : this.cookies;
-    if (!key || !_cs) {
+    const cookieString = _tmp ? parse(_tmp) : this.cookies;
+    if (!key || !cookieString) {
       return false;
     }
 
-    return _cs.hasOwnProperty(key);
+    return cookieString.hasOwnProperty(key);
   }
 
   /*
@@ -421,19 +476,18 @@ class Cookies extends __cookies {
             WebApp.connectHandlers.use((req, res, next) => {
               if (urlRE.test(req._parsedUrl.path)) {
                 if (req.headers && req.headers.cookie) {
-                  const _cObj  = parse(req.headers.cookie);
-                  const _cKeys = Object.keys(_cObj);
-                  const _cArr  = [];
-                  let   _cStr;
+                  const cookiesObject = parse(req.headers.cookie);
+                  const cookiesKeys   = Object.keys(cookiesObject);
+                  const cookiesArray  = [];
 
-                  for (let i = 0; i < _cKeys.length; i++) {
-                    _cStr = serialize(_cKeys[i], _cObj[_cKeys[i]]);
-                    if (!~_cArr.indexOf(_cStr)) {
-                      _cArr.push(_cStr);
+                  for (let i = 0; i < cookiesKeys.length; i++) {
+                    const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
+                    if (!cookiesArray.includes(cookieString)) {
+                      cookiesArray.push(cookieString);
                     }
                   }
 
-                  res.setHeader('Set-Cookie', _cArr);
+                  res.setHeader('Set-Cookie', cookiesArray);
                 }
 
                 res.writeHead(200);
