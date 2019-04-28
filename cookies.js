@@ -244,7 +244,7 @@ const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
 const isTypedRegEx = /false|true|null|undefined/;
 const deserialize = (string) => {
   if (typeof string !== 'string') {
-    return string;
+    return decode(string);
   }
 
   if (isStringifiedRegEx.test(string)) {
