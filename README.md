@@ -180,6 +180,25 @@ if (Meteor.isServer) {
 }
 ```
 
+## Running Tests
+
+ 1. Clone this package
+ 2. In Terminal (*Console*) go to directory where package is cloned
+ 3. Then run:
+
+### Meteor/Tinytest
+
+```shell
+# Default
+meteor test-packages ./
+
+# With custom port
+meteor test-packages ./ --port 8888
+
+# With local MongoDB and custom port
+MONGO_URL="mongodb://127.0.0.1:27017/cookies-tests" meteor test-packages ./ --port 8888
+```
+
 ## Support this project:
 
 This project wouldn't be possible without [ostr.io](https://ostr.io).
