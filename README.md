@@ -39,7 +39,7 @@ Create new instance of Cookies
 
 - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
 - `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternate Usage" section
-- `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance
+- `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
 - `opts.TTL` {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
 
