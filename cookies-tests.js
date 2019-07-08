@@ -212,7 +212,7 @@ if (Meteor.isClient) {
     if(EJSON.equals(one, two)){
       console.info(`[${testname}] PASSED`);
     }else{
-      console.warn(`[${testname}] Failed`, `Expected: ${JSON.stringify(two)}`, `Got: ${JSON.stringify(one)}`);
+      console.warn(`[${testname}] Failed!`, `Expected: ${JSON.stringify(two)}`, `Got: ${JSON.stringify(one)}`);
     }
   };
 

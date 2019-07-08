@@ -4,11 +4,12 @@
   <img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" width="160">
 </a>
 
-Isomorphic bulletproof cookie functions for *Client* and *Server*.
+Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with support of *Client*, *Server*, *Browser*, *Cordova*, and other *Meteor*-supported environments.
 
 - 👷 __100% Tests coverage__;
 - 📦 No external dependencies, no `underscore`, no `jQuery`, no `Blaze`;
-- 🖥 Works on both *Server* and *Client*;
+- 🖥 Full support with same API on both *Server* and *Client* environments;
+- 📱 Support for *Cordova*, *Browser* and other Meteor's *Client* environments;
 - ㊗️ With Unicode support for cookies' value;
 - 👨‍💻 With `String`, `Array`, `Object`, and `Boolean` support as cookies' value;
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok);
@@ -37,7 +38,8 @@ __Server Usage Note:__ On a server Cookies implemented as a middleware. To get a
 Create new instance of Cookies
 
 - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
-- `opts.handler` {*Function*} - [*Server*] Middleware function with one argument `cookies` as `Cookies` instance. See "Alternate Usage" section
+- `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternate Usage" section
+- `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
 - `opts.TTL` {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
 
@@ -95,6 +97,7 @@ Send all current cookies to server
 
 ```js
 /* Both Client & Server */
+import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies();
 
@@ -124,6 +127,8 @@ if (Meteor.isClient) {
 
 /* Server */
 if (Meteor.isServer) {
+  const { WebApp } = require('meteor/webapp');
+
   WebApp.connectHandlers.use((req, res, next) => {
     cookies = req.Cookies;
 
@@ -157,6 +162,7 @@ if (Meteor.isServer) {
 
 ```js
 /* Both Client & Server */
+import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
 
 /* Client */
@@ -170,8 +176,10 @@ if (Meteor.isClient) {
 
 /* Server */
 if (Meteor.isServer) {
+  const { WebApp } = require('meteor/webapp');
+
   const cookie = new Cookies({
-    auto: false, // Do not bind as a middleware by default
+    auto: false, // Do not bind as a middleware by default (recommended, but not required)
     handler(cookies) {
       cookies.set('gender', 'male'); //true
       cookies.get('gender'); //male
