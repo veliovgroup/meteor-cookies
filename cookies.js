@@ -11,7 +11,10 @@ if (Meteor.isServer) {
 
 const NoOp  = () => {};
 const urlRE = /\/___cookie___\/set/;
-const originRE = /^http:\/\/localhost:12\d\d\d$/;
+const rootUrlRE = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__.ROOT_URL || window.__meteor_runtime_config__.meteorEnv.ROOT_URL || false);
+const mobileRootUrlRE = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__.MOBILE_ROOT_URL || window.__meteor_runtime_config__.meteorEnv.MOBILE_ROOT_URL || false);
+const originRE = new RegExp(`^https?:\/\/(localhost:12\\d\\d\\d${rootUrlRE ? ('|' + rootUrlRE) : ''}${mobileRootUrlRE ? ('|' + mobileRootUrlRE) : ''})$`);
+
 const helpers = {
   isUndefined(obj) {
     return obj === void 0;
@@ -24,11 +27,7 @@ const helpers = {
     return this.isArray(obj) ? obj.slice() : Object.assign({}, obj);
   }
 };
-const setWithCredentials = (xhr) => {
-  xhr.withCredentials = true;
-  return true;
-};
-const _helpers = ['Number', 'Object'];
+const _helpers = ['Number', 'Object', 'Function'];
 for (let i = 0; i < _helpers.length; i++) {
   helpers['is' + _helpers[i]] = function (obj) {
     return Object.prototype.toString.call(obj) === '[object ' + _helpers[i] + ']';
@@ -208,6 +207,8 @@ const serialize = (key, val, opt = {}) => {
       throw new Meteor.Error(404, 'option path is invalid');
     }
     pairs.push(`Path=${opt.path}`);
+  } else {
+    pairs.push('Path=/');
   }
 
   opt.expires = opt.expires || opt.expire || false;
@@ -420,23 +421,28 @@ class __cookies {
   send(cb = NoOp) {
     if (Meteor.isServer) {
       cb(new Meteor.Error(400, 'Can\'t run `.send()` on server, it\'s Client only method!'));
-      return;
     }
 
     if (this.runOnServer) {
-      let path = (window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || '') + '/___cookie___/set';
-      let query = ``;
+      let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
+      let query = '';
+
       if (Meteor.isCordova) {
         path = Meteor.absoluteUrl('___cookie___/set');
         const cookies = this.keys().map(key => `cookie=${encodeURIComponent(this.cookies[key])}`);
         query = `?${cookies.join('&')}`;
       }
 
-      HTTP.get(`${path}${query}`, { beforeSend: setWithCredentials }, cb);
+      HTTP.get(`${path}${query}`, {
+        beforeSend(xhr) {
+          xhr.withCredentials = true;
+          return true;
+        }
+      }, cb);
     } else {
       cb(new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.'));
     }
-    return;
+    return void 0;
   }
 }
 
@@ -458,7 +464,6 @@ const __middlewareHandler = (req, res, self) => {
   throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
 };
 
-
 /*
  * @locus Anywhere
  * @class Cookies
@@ -479,7 +484,8 @@ class Cookies extends __cookies {
     } else {
       super({}, opts.TTL, opts.runOnServer);
       opts.auto        = opts.auto !== false ? true : false;
-      this.handler     = opts.handler || (() => {});
+      this.handler     = helpers.isFunction(opts.handler) ? opts.handler : false;
+      this.onCookies   = helpers.isFunction(opts.onCookies) ? opts.onCookies : false;
       this.runOnServer = opts.runOnServer;
 
       if (this.runOnServer) {
@@ -501,8 +507,7 @@ class Cookies extends __cookies {
                   const cookiesArray  = [];
 
                   for (let i = 0; i < cookiesKeys.length; i++) {
-                    let cookieString = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
-                    cookieString += '; Path=/';
+                    const cookieString = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
                     if (!cookiesArray.includes(cookieString)) {
                       cookiesArray.push(cookieString);
                     }
@@ -511,10 +516,13 @@ class Cookies extends __cookies {
                   res.setHeader('Set-Cookie', cookiesArray);
                 }
 
+                helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, this));
+
                 res.writeHead(200);
                 res.end('');
               } else {
                 req.Cookies = __middlewareHandler(req, res, this);
+                helpers.isFunction(this.handler) && this.handler(req.Cookies);
                 next();
               }
             });
@@ -524,7 +532,6 @@ class Cookies extends __cookies {
       }
     }
   }
-
 
   /*
    * @locus Server
@@ -539,7 +546,7 @@ class Cookies extends __cookies {
     }
 
     return (req, res, next) => {
-      this.handler && this.handler(__middlewareHandler(req, res, this));
+      helpers.isFunction(this.handler) && this.handler(__middlewareHandler(req, res, this));
       next();
     };
   }
