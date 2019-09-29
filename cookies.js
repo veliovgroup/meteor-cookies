@@ -11,9 +11,9 @@ if (Meteor.isServer) {
 
 const NoOp  = () => {};
 const urlRE = /\/___cookie___\/set/;
-const rootUrlRE = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__.ROOT_URL || window.__meteor_runtime_config__.meteorEnv.ROOT_URL || false);
-const mobileRootUrlRE = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__.MOBILE_ROOT_URL || window.__meteor_runtime_config__.meteorEnv.MOBILE_ROOT_URL || false);
-const originRE = new RegExp(`^https?:\/\/(localhost:12\\d\\d\\d${rootUrlRE ? ('|' + rootUrlRE) : ''}${mobileRootUrlRE ? ('|' + mobileRootUrlRE) : ''})$`);
+const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__.ROOT_URL || window.__meteor_runtime_config__.meteorEnv.ROOT_URL || false);
+const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__.MOBILE_ROOT_URL || window.__meteor_runtime_config__.meteorEnv.MOBILE_ROOT_URL || false);
+const originRE = new RegExp(`^https?:\/\/(localhost:12\\d\\d\\d${rootUrl ? ('|' + rootUrl) : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
 
 const helpers = {
   isUndefined(obj) {
