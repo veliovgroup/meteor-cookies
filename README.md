@@ -27,11 +27,14 @@ meteor add ostrio:cookies
 import { Cookies } from 'meteor/ostrio:cookies';
 ```
 
+## FAQ:
+
+- __Cookies are missing on Server__ — In 99% cases it's caused by Meteor's `webapp` http server callback-chain disorder. Make sure `new Cookies()` is called before *Routes* are registered. Routing packages usually take care of `*` (e.g. catch-all or 404) route, not passing request further to callback-chain. And as freshly installed package it would be placed at the end of `.meteor/packages` file, where list-order matters. We recommend to place `ostrio:cookies` package above all community packages in `.meteor/packages` list.
+
 ## API:
 
-__Note:__ On a server, cookies will be set __only__ after headers are sent (on next route or page reload). To send cookies from *Client* to *Server* without a page reload use `send()` method.
-
-__Server Usage Note:__ On a server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
+- __Note__ — On a server, cookies will be set __only__ after headers are sent (on next route or page reload). To send cookies from *Client* to *Server* without a page reload use `send()` method.
+- __Server Usage Note__ — On a server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
 
 ### Fetch cookies `new Cookies(opts)` [*Isomorphic*]
 
