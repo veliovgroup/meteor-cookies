@@ -136,6 +136,7 @@ const parse = (str, options) => {
  * @function
  * @name antiCircular
  * @param data {Object} - Circular or any other object which needs to be non-circular
+ * @private
  */
 const antiCircular = (_obj) => {
   const object = helpers.clone(_obj);
@@ -157,7 +158,7 @@ const antiCircular = (_obj) => {
  * @param {String} name
  * @param {String} val
  * @param {Object} [options]
- * @return String
+ * @return { cookieString: String, sanitizedValue: Mixed }
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
@@ -174,11 +175,13 @@ const serialize = (key, val, opt = {}) => {
     name = key;
   }
 
+  let sanitizedValue = val;
   let value = val;
   if (!helpers.isUndefined(value)) {
     if (helpers.isObject(value) || helpers.isArray(value)) {
       const stringified = antiCircular(value);
       value = encode(`JSON.parse(${stringified})`);
+      sanitizedValue = JSON.parse(stringified);
     } else {
       value = encode(value);
       if (value && !fieldContentRegExp.test(value)) {
@@ -238,14 +241,14 @@ const serialize = (key, val, opt = {}) => {
     pairs.push('SameSite');
   }
 
-  return pairs.join('; ');
+  return { cookieString: pairs.join('; '), sanitizedValue };
 };
 
 const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
 const isTypedRegEx = /false|true|null|undefined/;
 const deserialize = (string) => {
   if (typeof string !== 'string') {
-    return decode(string);
+    return string;
   }
 
   if (isStringifiedRegEx.test(string)) {
@@ -268,22 +271,25 @@ const deserialize = (string) => {
 /*
  * @locus Anywhere
  * @class __cookies
- * @param _cookies {Object|String} - Current cookies as String or Object
- * @param TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
- * @param runOnServer {Boolean} - Expose Cookies class to Server
- * @param response {http.ServerResponse|Object} - This object is created internally by a HTTP server
+ * @param opts {Object} - Options (configuration) object
+ * @param opts._cookies {Object|String} - Current cookies as String or Object
+ * @param opts.TTL {Number|Boolean} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
+ * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
+ * @param opts.response {http.ServerResponse|Object} - This object is created internally by a HTTP server
+ * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @summary Internal Class
  */
 class __cookies {
-  constructor(_cookies, TTL, runOnServer, response) {
-    this.TTL         = TTL;
-    this.response    = response;
-    this.runOnServer = runOnServer;
+  constructor(opts) {
+    this.TTL = opts.TTL || false;
+    this.response = opts.response || false;
+    this.runOnServer = opts.runOnServer || false;
+    this.allowQueryStringCookies = opts.allowQueryStringCookies || false;
 
-    if (helpers.isObject(_cookies)) {
-      this.cookies = _cookies;
+    if (helpers.isObject(opts._cookies)) {
+      this.cookies = opts._cookies;
     } else {
-      this.cookies = parse(_cookies);
+      this.cookies = parse(opts._cookies);
     }
   }
 
@@ -324,11 +330,11 @@ class __cookies {
       if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
         opts.expires = new Date(+new Date() + this.TTL);
       }
-      const cookieString = serialize(key, value, opts);
-      this.cookies[key] = cookieString;
+      const { cookieString, sanitizedValue } = serialize(key, value, opts);
+      this.cookies[key] = sanitizedValue;
       if (Meteor.isClient) {
         document.cookie = cookieString;
-      } else {
+      } else if (this.response) {
         this.response.setHeader('Set-Cookie', cookieString);
       }
       return true;
@@ -355,7 +361,7 @@ class __cookies {
    */
   remove(key, path = '/', domain = '') {
     if (key && this.cookies.hasOwnProperty(key)) {
-      const cookieString = serialize(key, '', {
+      const { cookieString } = serialize(key, '', {
         domain,
         path,
         expires: new Date(0)
@@ -364,7 +370,7 @@ class __cookies {
       delete this.cookies[key];
       if (Meteor.isClient) {
         document.cookie = cookieString;
-      } else {
+      } else if (this.response) {
         this.response.setHeader('Set-Cookie', cookieString);
       }
       return true;
@@ -427,10 +433,21 @@ class __cookies {
       let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
       let query = '';
 
-      if (Meteor.isCordova) {
-        path = Meteor.absoluteUrl('___cookie___/set');
-        const cookies = this.keys().map(key => `cookie=${encodeURIComponent(this.cookies[key])}`);
-        query = `?${cookies.join('&')}`;
+      if (Meteor.isCordova && this.allowQueryStringCookies) {
+        const cookiesKeys = this.keys();
+        const cookiesArray = [];
+        for (let i = 0; i < cookiesKeys.length; i++) {
+          const { sanitizedValue } = serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
+          const pair = `${cookiesKeys[i]}=${sanitizedValue}`;
+          if (!cookiesArray.includes(pair)) {
+            cookiesArray.push(pair);
+          }
+        }
+
+        if (cookiesArray.length) {
+          path = Meteor.absoluteUrl('___cookie___/set');
+          query = `?___cookies___=${encodeURIComponent(cookiesArray.join('; '))}`;
+        }
       }
 
       HTTP.get(`${path}${query}`, {
@@ -452,13 +469,20 @@ class __cookies {
  * @summary Middleware handler
  * @private
  */
-const __middlewareHandler = (req, res, self) => {
+const __middlewareHandler = (request, response, opts) => {
   let _cookies = {};
-  if (self.runOnServer) {
-    if (req.headers && req.headers.cookie) {
-      _cookies = parse(req.headers.cookie);
+  if (opts.runOnServer) {
+    if (request.headers && request.headers.cookie) {
+      _cookies = parse(request.headers.cookie);
     }
-    return new __cookies(_cookies, self.TTL, self.runOnServer, res);
+
+    return new __cookies({
+      _cookies,
+      TTL: opts.TTL,
+      runOnServer: opts.runOnServer,
+      response,
+      allowQueryStringCookies: opts.allowQueryStringCookies
+    });
   }
 
   throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
@@ -472,62 +496,68 @@ const __middlewareHandler = (req, res, self) => {
  * @param opts.auto {Boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
  * @param opts.handler {Function} - [Server] Middleware handler
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
+ * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @summary Main Cookie class
  */
 class Cookies extends __cookies {
   constructor(opts = {}) {
     opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
+    opts.allowQueryStringCookies = (opts.allowQueryStringCookies !== true) ? false : true;
 
     if (Meteor.isClient) {
-      super(document.cookie, opts.TTL, opts.runOnServer);
+      opts._cookies = document.cookie;
+      super(opts);
     } else {
-      super({}, opts.TTL, opts.runOnServer);
-      opts.auto        = opts.auto !== false ? true : false;
-      this.handler     = helpers.isFunction(opts.handler) ? opts.handler : false;
-      this.onCookies   = helpers.isFunction(opts.onCookies) ? opts.onCookies : false;
-      this.runOnServer = opts.runOnServer;
+      opts._cookies = {};
+      super(opts);
+      opts.auto = (opts.auto !== false) ? true : false;
+      this.opts = opts;
+      this.handler = helpers.isFunction(opts.handler) ? opts.handler : false;
+      this.onCookies = helpers.isFunction(opts.onCookies) ? opts.onCookies : false;
 
-      if (this.runOnServer) {
-        if (!Cookies.isLoadedOnServer) {
-          if (opts.auto) {
-            WebApp.connectHandlers.use((req, res, next) => {
-              if (urlRE.test(req._parsedUrl.path)) {
-                if (originRE.test(req.headers.origin)) {
-                  res.setHeader('Access-Control-Allow-Credentials', 'true');
-                  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      if (opts.runOnServer && !Cookies.isLoadedOnServer) {
+        Cookies.isLoadedOnServer = true;
+        if (opts.auto) {
+          WebApp.connectHandlers.use((req, res, next) => {
+            if (urlRE.test(req._parsedUrl.path)) {
+              if (originRE.test(req.headers.origin)) {
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+                res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+              }
+
+              const cookiesArray = [];
+              let cookiesObject = {};
+              if (opts.allowQueryStringCookies && req.query.___cookies___) {
+                cookiesObject = parse(decodeURIComponent(req.query.___cookies___));
+              } else if (req.headers.cookie) {
+                cookiesObject = parse(req.headers.cookie);
+              }
+
+              const cookiesKeys = Object.keys(cookiesObject);
+              if (cookiesKeys.length) {
+                for (let i = 0; i < cookiesKeys.length; i++) {
+                  const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
+                  if (!cookiesArray.includes(cookieString)) {
+                    cookiesArray.push(cookieString);
+                  }
                 }
 
-                if (req.query.cookie) {
-                  const cookies = helpers.isArray(req.query.cookie) ? req.query.cookie : [req.query.cookie];
-                  res.setHeader('Set-Cookie', cookies);
-                } else if (req.headers.cookie) {
-                  const cookiesObject = parse(req.headers.cookie);
-                  const cookiesKeys   = Object.keys(cookiesObject);
-                  const cookiesArray  = [];
-
-                  for (let i = 0; i < cookiesKeys.length; i++) {
-                    const cookieString = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
-                    if (!cookiesArray.includes(cookieString)) {
-                      cookiesArray.push(cookieString);
-                    }
-                  }
-
+                if (cookiesArray.length) {
                   res.setHeader('Set-Cookie', cookiesArray);
                 }
-
-                helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, this));
-
-                res.writeHead(200);
-                res.end('');
-              } else {
-                req.Cookies = __middlewareHandler(req, res, this);
-                helpers.isFunction(this.handler) && this.handler(req.Cookies);
-                next();
               }
-            });
-          }
-          Cookies.isLoadedOnServer = true;
+
+              helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, opts));
+
+              res.writeHead(200);
+              res.end('');
+            } else {
+              req.Cookies = __middlewareHandler(req, res, opts);
+              helpers.isFunction(this.handler) && this.handler(req.Cookies);
+              next();
+            }
+          });
         }
       }
     }
@@ -546,7 +576,7 @@ class Cookies extends __cookies {
     }
 
     return (req, res, next) => {
-      helpers.isFunction(this.handler) && this.handler(__middlewareHandler(req, res, this));
+      helpers.isFunction(this.handler) && this.handler(__middlewareHandler(req, res, this.opts));
       next();
     };
   }
