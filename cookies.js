@@ -157,7 +157,7 @@ const antiCircular = (_obj) => {
  * @param {String} name
  * @param {String} val
  * @param {Object} [options]
- * @return { cookieString: String, sanitizedValue: Mixed }
+ * @return String
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
@@ -174,13 +174,11 @@ const serialize = (key, val, opt = {}) => {
     name = key;
   }
 
-  let sanitizedValue = val;
   let value = val;
   if (!helpers.isUndefined(value)) {
     if (helpers.isObject(value) || helpers.isArray(value)) {
       const stringified = antiCircular(value);
       value = encode(`JSON.parse(${stringified})`);
-      sanitizedValue = JSON.parse(stringified);
     } else {
       value = encode(value);
       if (value && !fieldContentRegExp.test(value)) {
@@ -240,14 +238,14 @@ const serialize = (key, val, opt = {}) => {
     pairs.push('SameSite');
   }
 
-  return { cookieString: pairs.join('; '), sanitizedValue };
+  return pairs.join('; ');
 };
 
 const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
 const isTypedRegEx = /false|true|null|undefined/;
 const deserialize = (string) => {
   if (typeof string !== 'string') {
-    return string;
+    return decode(string);
   }
 
   if (isStringifiedRegEx.test(string)) {
@@ -326,8 +324,8 @@ class __cookies {
       if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
         opts.expires = new Date(+new Date() + this.TTL);
       }
-      const { cookieString, sanitizedValue } = serialize(key, value, opts);
-      this.cookies[key] = sanitizedValue;
+      const cookieString = serialize(key, value, opts);
+      this.cookies[key] = cookieString;
       if (Meteor.isClient) {
         document.cookie = cookieString;
       } else {
@@ -357,7 +355,7 @@ class __cookies {
    */
   remove(key, path = '/', domain = '') {
     if (key && this.cookies.hasOwnProperty(key)) {
-      const { cookieString } = serialize(key, '', {
+      const cookieString = serialize(key, '', {
         domain,
         path,
         expires: new Date(0)
@@ -426,7 +424,16 @@ class __cookies {
     }
 
     if (this.runOnServer) {
-      HTTP.get(`${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`, {
+      let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
+      let query = '';
+
+      if (Meteor.isCordova) {
+        path = Meteor.absoluteUrl('___cookie___/set');
+        const cookies = this.keys().map(key => `cookie=${encodeURIComponent(this.cookies[key])}`);
+        query = `?${cookies.join('&')}`;
+      }
+
+      HTTP.get(`${path}${query}`, {
         beforeSend(xhr) {
           xhr.withCredentials = true;
           return true;
@@ -486,18 +493,21 @@ class Cookies extends __cookies {
           if (opts.auto) {
             WebApp.connectHandlers.use((req, res, next) => {
               if (urlRE.test(req._parsedUrl.path)) {
-                if (req.headers && req.headers.cookie) {
+                if (originRE.test(req.headers.origin)) {
+                  res.setHeader('Access-Control-Allow-Credentials', 'true');
+                  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+                }
+
+                if (req.query.cookie) {
+                  const cookies = helpers.isArray(req.query.cookie) ? req.query.cookie : [req.query.cookie];
+                  res.setHeader('Set-Cookie', cookies);
+                } else if (req.headers.cookie) {
                   const cookiesObject = parse(req.headers.cookie);
                   const cookiesKeys   = Object.keys(cookiesObject);
                   const cookiesArray  = [];
 
-                  if (originRE.test(req.headers.origin)) {
-                    res.setHeader('Access-Control-Allow-Credentials', 'true');
-                    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-                  }
-
                   for (let i = 0; i < cookiesKeys.length; i++) {
-                    const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
+                    const cookieString = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
                     if (!cookiesArray.includes(cookieString)) {
                       cookiesArray.push(cookieString);
                     }
