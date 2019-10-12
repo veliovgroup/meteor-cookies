@@ -6,7 +6,7 @@
 
 Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with support of *Client*, *Server*, *Browser*, *Cordova*, and other *Meteor*-supported environments.
 
-- 👷 __100% Tests coverage__;
+- 👨‍🔬 __~96% Tests coverage__;
 - 📦 No external dependencies, no `underscore`, no `jQuery`, no `Blaze`;
 - 🖥 Full support with same API on both *Server* and *Client* environments;
 - 📱 Support for *Cordova*, *Browser* and other Meteor's *Client* environments;
@@ -43,8 +43,9 @@ Create new instance of Cookies
 - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
 - `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternate Usage" section
 - `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
-- `opts.TTL` {*Number*} - Default cookies expiration time (max-age) in milliseconds, by default - `session` (*no TTL*)
+- `opts.TTL` {*Number*|*Boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
+- `opts.allowQueryStringCookies` {*Boolean*} - Allow passing Cookies in a query string (in URL). Primary should be used only in *Cordova* environment. Note: this option will be used only on Cordova
 
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';
