@@ -1,8 +1,12 @@
-.npm
+*.md
+.DS_Store
+.eslintcache
+.eslintrc
 .github
 .meteor
-.DS_Store
+.npm
 .versions
-.eslintcache
+cookies-tests.js
 node_modules
 npm-debug.log*
+package.js
