@@ -46,7 +46,7 @@ Create new instance of Cookies
 - `opts.TTL` {*Number*|*Boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
 - `opts.allowQueryStringCookies` {*Boolean*} - Allow passing Cookies in a query string (in URL). Primary should be used only in *Cordova* environment. Note: this option will be used only on Cordova
-- `opts.allowedCordovaOrigin` {*String*} - [*Server*] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
+- `opts.allowedCordovaOrigin` {*Regex*} - [*Server*] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
 
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';

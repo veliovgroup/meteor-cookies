@@ -276,7 +276,7 @@ const deserialize = (string) => {
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.response {http.ServerResponse|Object} - This object is created internally by a HTTP server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigin {String} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
+ * @param opts.allowedCordovaOrigin {Regex} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
  * @summary Internal Class
  */
 class __cookies {
@@ -285,9 +285,9 @@ class __cookies {
     this.response = opts.response || false;
     this.runOnServer = opts.runOnServer || false;
     this.allowQueryStringCookies = opts.allowQueryStringCookies || false;
-    this.allowedCordovaOrigin = opts.allowedCordovaOrigin ? `http://${opts.allowedCordovaOrigin}` : '';
+    this.allowedCordovaOrigin = opts.allowedCordovaOrigin || false;
 
-    this.originRE = new RegExp(`^https?:\/\/(${opts.allowedCordovaOrigin ? opts.allowedCordovaOrigin : ''}${rootUrl ? ('|' + rootUrl) : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
+    this.originRE = new RegExp(`^https?:\/\/(${rootUrl ? rootUrl : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
 
     if (helpers.isObject(opts._cookies)) {
       this.cookies = opts._cookies;
@@ -500,7 +500,7 @@ const __middlewareHandler = (request, response, opts) => {
  * @param opts.handler {Function} - [Server] Middleware handler
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigin {String} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
+ * @param opts.allowedCordovaOrigin {Regex} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
  * @summary Main Cookie class
  */
 class Cookies extends __cookies {
@@ -525,17 +525,20 @@ class Cookies extends __cookies {
         if (opts.auto) {
           WebApp.connectHandlers.use((req, res, next) => {
             if (urlRE.test(req._parsedUrl.path)) {
-              if (this.originRE.test(req.headers.origin)) {
+              const matchedCordovaOrigin = !!req.headers.origin
+                && this.allowedCordovaOrigin
+                && this.allowedCordovaOrigin.test(req.headers.origin);
+              const matchedOrigin = matchedCordovaOrigin
+                || (!!req.headers.origin && this.originRE.test(req.headers.origin));
+
+              if (matchedOrigin) {
                 res.setHeader('Access-Control-Allow-Credentials', 'true');
                 res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
               }
 
               const cookiesArray = [];
               let cookiesObject = {};
-              if (this.allowedCordovaOrigin
-                && req.headers.origin
-                && this.allowedCordovaOrigin === req.headers.origin
-                && opts.allowQueryStringCookies && req.query.___cookies___) {
+              if (matchedCordovaOrigin && opts.allowQueryStringCookies && req.query.___cookies___) {
                 cookiesObject = parse(decodeURIComponent(req.query.___cookies___));
               } else if (req.headers.cookie) {
                 cookiesObject = parse(req.headers.cookie);
