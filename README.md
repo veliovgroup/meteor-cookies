@@ -46,6 +46,7 @@ Create new instance of Cookies
 - `opts.TTL` {*Number*|*Boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
 - `opts.allowQueryStringCookies` {*Boolean*} - Allow passing Cookies in a query string (in URL). Primary should be used only in *Cordova* environment. Note: this option will be used only on Cordova
+- `opts.allowedCordovaOrigin` {*Regex*} - [*Server*] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
 
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';
@@ -95,7 +96,15 @@ Returns an array of all readable cookies from this location
 
 ### `cookies.send([callback])` [*Client*]
 
-Send all current cookies to server
+Send all current cookies to server.
+
+When `opts.allowQueryStringCookies` is `true` on both `Client` and `Server` and `opts.allowedCordovaOrigin`
+matches the client's local webserver address (e.g. `localhost:12XXX` - Meteor/Cordova connects through `localhost:12XXX` for outgoing requests)
+this also instructs the server to respond with the requested cookies (sent as GET-Parameters) in the response as `Set-Cookie`-header.
+
+The reason for this *workaround* is the general lack of cookie support in Meteor/Cordova when setting in the client - but cookies set by the server are always sent along with every request.
+
+*Please make sure that requests which should include cookies must have [withCredentials](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) enabled*
 
 ## Examples:
 
