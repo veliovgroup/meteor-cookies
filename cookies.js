@@ -276,7 +276,7 @@ const deserialize = (string) => {
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.response {http.ServerResponse|Object} - This object is created internally by a HTTP server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigin {Regex} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
+ * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (localhost:12[0-9]{0,3}$)
  * @summary Internal Class
  */
 class __cookies {
@@ -285,7 +285,11 @@ class __cookies {
     this.response = opts.response || false;
     this.runOnServer = opts.runOnServer || false;
     this.allowQueryStringCookies = opts.allowQueryStringCookies || false;
-    this.allowedCordovaOrigin = opts.allowedCordovaOrigin || false;
+    this.allowedCordovaOrigins = opts.allowedCordovaOrigins || false;
+
+    if (this.allowedCordovaOrigins === true) {
+      this.allowedCordovaOrigins = /^https?:\/\/localhost:12[0-9]{0,3}$/;
+    }
 
     this.originRE = new RegExp(`^https?:\/\/(${rootUrl ? rootUrl : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
 
@@ -500,7 +504,7 @@ const __middlewareHandler = (request, response, opts) => {
  * @param opts.handler {Function} - [Server] Middleware handler
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigin {Regex} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX
+ * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (/localhost:12[0-9]{0,3}$/)
  * @summary Main Cookie class
  */
 class Cookies extends __cookies {
@@ -526,8 +530,8 @@ class Cookies extends __cookies {
           WebApp.connectHandlers.use((req, res, next) => {
             if (urlRE.test(req._parsedUrl.path)) {
               const matchedCordovaOrigin = !!req.headers.origin
-                && this.allowedCordovaOrigin
-                && this.allowedCordovaOrigin.test(req.headers.origin);
+                && this.allowedCordovaOrigins
+                && this.allowedCordovaOrigins.test(req.headers.origin);
               const matchedOrigin = matchedCordovaOrigin
                 || (!!req.headers.origin && this.originRE.test(req.headers.origin));
 
