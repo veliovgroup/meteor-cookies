@@ -276,7 +276,7 @@ const deserialize = (string) => {
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.response {http.ServerResponse|Object} - This object is created internally by a HTTP server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (localhost:12[0-9]{0,3}$)
+ * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
  * @summary Internal Class
  */
 class __cookies {
@@ -288,7 +288,7 @@ class __cookies {
     this.allowedCordovaOrigins = opts.allowedCordovaOrigins || false;
 
     if (this.allowedCordovaOrigins === true) {
-      this.allowedCordovaOrigins = /^https?:\/\/localhost:12[0-9]{0,3}$/;
+      this.allowedCordovaOrigins = /^http:\/\/localhost:12[0-9]{3}$/;
     }
 
     this.originRE = new RegExp(`^https?:\/\/(${rootUrl ? rootUrl : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
@@ -504,7 +504,7 @@ const __middlewareHandler = (request, response, opts) => {
  * @param opts.handler {Function} - [Server] Middleware handler
  * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
  * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (/localhost:12[0-9]{0,3}$/)
+ * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
  * @summary Main Cookie class
  */
 class Cookies extends __cookies {
