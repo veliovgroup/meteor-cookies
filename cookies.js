@@ -237,7 +237,7 @@ const serialize = (key, val, opt = {}) => {
   }
 
   if (opt.sameSite) {
-    pairs.push('SameSite');
+    pairs.push(opt.sameSite === true ? 'SameSite' : `SameSite=${opt.sameSite}`);
   }
 
   return { cookieString: pairs.join('; '), sanitizedValue };

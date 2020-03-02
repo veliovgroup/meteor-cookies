@@ -73,7 +73,7 @@ Create/overwrite a cookie.
 - `opts.domain` {*String*} - [Optional] The domain from where the cookie will be readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
 - `opts.secure` {*Boolean*} - [Optional] The cookie will be transmitted only over secure protocol as `https`
 - `opts.httpOnly` {*Boolean*} - [Optional] An HttpOnly cookie cannot be accessed by client-side APIs, such as JavaScript. This restriction eliminates the threat of cookie theft via cross-site scripting (XSS)
-- `opts.sameSite` {*Boolean*} - [Optional] Cookie which can only be sent in requests originating from the same origin as the target domain. Read more on [wikipedia](https://en.wikipedia.org/wiki/HTTP_cookie#SameSite_cookie) and [ietf](https://tools.ietf.org/html/draft-west-first-party-cookies-05)
+- `opts.sameSite` {*Boolean*} {*String*: *None*, *Strict*, or *Lax*} - [Optional] Cross-site cookies usage policy. Read more on [wikipedia](https://en.wikipedia.org/wiki/HTTP_cookie#SameSite_cookie), [web.dev](https://web.dev/samesite-cookies-explained/), and [ietf](https://tools.ietf.org/html/draft-west-first-party-cookies-05). Default: `false`
 - `opts.firstPartyOnly` {*Boolean*} - [Optional] *Deprecated use `sameSite` instead*
 
 ### `cookies.remove([key], [path], [domain])` [*Isomorphic*]

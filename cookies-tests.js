@@ -1,6 +1,6 @@
 import { EJSON } from 'meteor/ejson';
 import { Meteor } from 'meteor/meteor';
-import { Cookies } from 'meteor/ostrio:cookies';
+import { Cookies } from './cookies.js';
 
 let WebApp;
 const antiCircular = (_obj) => {

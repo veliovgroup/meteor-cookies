@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '2.5.0',
+  version: '2.6.0',
   summary: 'Isomorphic bulletproof Server, Client, Browser and Cordova cookies',
   git: 'https://github.com/VeliovGroup/Meteor-Cookies',
   documentation: 'README.md'
@@ -16,7 +16,7 @@ Package.onUse((api) => {
 
 Package.onTest((api) => {
   api.use('tinytest');
-  api.use(['ecmascript', 'ostrio:cookies'], ['client', 'server']);
+  api.use(['ecmascript', 'http'], ['client', 'server']);
   api.use(['ejson', 'webapp'], 'server');
   api.addFiles('cookies-tests.js', ['client', 'server']);
 });
