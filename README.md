@@ -1,17 +1,19 @@
-# Isomorphic Cookies
-
-<a href="https://www.patreon.com/bePatron?u=20396046">
-  <img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" width="160">
+[![support](https://img.shields.io/badge/support-PayPal-white)](https://paypal.me/veliovgroup)
+<a href="https://ostr.io/info/built-by-developers-for-developers">
+  <img src="https://ostr.io/apple-touch-icon-60x60.png" height="20">
 </a>
+
+# Isomorphic Cookies
 
 Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with support of *Client*, *Server*, *Browser*, *Cordova*, and other *Meteor*-supported environments.
 
+- 👨‍💻 Stable codebase, 70.000+ downloads;
 - 👨‍🔬 __~96% Tests coverage__;
 - 📦 No external dependencies, no `underscore`, no `jQuery`, no `Blaze`;
 - 🖥 Full support with same API on both *Server* and *Client* environments;
-- 📱 Support for *Cordova*, *Browser* and other Meteor's *Client* environments;
-- ㊗️ With Unicode support for cookies' value;
-- 👨‍💻 With `String`, `Array`, `Object`, and `Boolean` support as cookies' value;
+- 📱 Compatible with *Cordova*, *Browser* and other Meteor's *Client* environments;
+- ㊗️ Unicode support as cookies' value;
+- 👨‍💻 `String`, `Array`, `Object`, and `Boolean` are supported cookies' value types;
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok);
 - 📦 Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/VeliovGroup/Client-Storage#persistent-client-browser-storage).
 
@@ -42,7 +44,7 @@ import { Cookies } from 'meteor/ostrio:cookies';
 Create new instance of Cookies
 
 - `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
-- `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternate Usage" section
+- `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternative Usage" section
 - `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
 - `opts.TTL` {*Number*|*Boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
 - `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
@@ -164,7 +166,7 @@ if (Meteor.isServer) {
 }
 ```
 
-### Alternate Usage
+### Alternative Usage
 
 ```js
 /* Both Client & Server */
@@ -214,7 +216,7 @@ meteor test-packages ./
 meteor test-packages ./ --port 8888
 ```
 
-## Support this project:
+## Support our open source contributions
 
-- [Become a patron](https://www.patreon.com/bePatron?u=20396046) — support my open source contributions with monthly donation
+- [Support via PayPal](https://paypal.me/veliovgroup) — support my open source contributions once or on regular basis
 - Use [ostr.io](https://ostr.io) — [Monitoring](https://snmp-monitoring.com), [Analytics](https://ostr.io/info/web-analytics), [WebSec](https://domain-protection.info), [Web-CRON](https://web-cron.info) and [Pre-rendering](https://prerendering.com) for a website
