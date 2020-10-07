@@ -281,6 +281,7 @@ const deserialize = (string) => {
  */
 class __cookies {
   constructor(opts) {
+    this.__pendingCookies = [];
     this.TTL = opts.TTL || false;
     this.response = opts.response || false;
     this.runOnServer = opts.runOnServer || false;
@@ -326,9 +327,9 @@ class __cookies {
    * @locus Anywhere
    * @memberOf __cookies
    * @name set
-   * @param {String}  key   - The name of the cookie to create/overwrite
-   * @param {String}  value - The value of the cookie
-   * @param {Object}  opts  - [Optional] Cookie options (see readme docs)
+   * @param {String} key   - The name of the cookie to create/overwrite
+   * @param {String} value - The value of the cookie
+   * @param {Object} opts  - [Optional] Cookie options (see readme docs)
    * @summary Create/overwrite a cookie.
    * @returns {Boolean}
    */
@@ -338,11 +339,13 @@ class __cookies {
         opts.expires = new Date(+new Date() + this.TTL);
       }
       const { cookieString, sanitizedValue } = serialize(key, value, opts);
+
       this.cookies[key] = sanitizedValue;
       if (Meteor.isClient) {
         document.cookie = cookieString;
       } else if (this.response) {
-        this.response.setHeader('Set-Cookie', cookieString);
+        this.__pendingCookies.push(cookieString);
+        this.response.setHeader('Set-Cookie', this.__pendingCookies);
       }
       return true;
     }
