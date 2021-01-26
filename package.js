@@ -10,7 +10,7 @@ Package.onUse((api) => {
   api.versionsFrom('1.4');
   api.use('ecmascript', ['client', 'server']);
   api.use('webapp', 'server');
-  api.use('fetch', 'client');
+  api.use('fetch@0.1.1', 'client');
   api.mainModule('cookies.js', ['client', 'server']);
 });
 
