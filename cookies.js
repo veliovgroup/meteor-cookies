@@ -1,12 +1,12 @@
 import { Meteor } from 'meteor/meteor';
 
-let HTTP;
+let fetch;
 let WebApp;
 
 if (Meteor.isServer) {
   WebApp = require('meteor/webapp').WebApp;
 } else {
-  HTTP = require('meteor/http').HTTP;
+  fetch = require('meteor/fetch').fetch;
 }
 
 const NoOp  = () => {};
@@ -460,12 +460,12 @@ class __cookies {
         }
       }
 
-      HTTP.get(`${path}${query}`, {
-        beforeSend(xhr) {
-          xhr.withCredentials = true;
-          return true;
-        }
-      }, cb);
+      fetch(`${path}${query}`, {
+        credentials: 'include',
+        type: 'cors'
+      }).then((response) => {
+        cb(void 0, response);
+      }).catch(cb);
     } else {
       cb(new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.'));
     }
