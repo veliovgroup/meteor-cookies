@@ -2,7 +2,6 @@ import { EJSON } from 'meteor/ejson';
 import { Meteor } from 'meteor/meteor';
 import { Cookies } from './cookies.js';
 
-let WebApp;
 const antiCircular = (_obj) => {
   const object = Object.assign({}, _obj);
   const cache  = new Map();
@@ -206,7 +205,7 @@ if (Meteor.isClient) {
     });
   });
 } else {
-  WebApp = require('meteor/webapp').WebApp;
+  const WebApp = require('meteor/webapp').WebApp;
 
   const tester = (one, two, testname) => {
     if(EJSON.equals(one, two)){
