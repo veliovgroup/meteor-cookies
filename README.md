@@ -1,3 +1,4 @@
+[![support](https://img.shields.io/badge/support-GitHub-white)](https://github.com/sponsors/dr-dimitru)
 [![support](https://img.shields.io/badge/support-PayPal-white)](https://paypal.me/veliovgroup)
 <a href="https://ostr.io/info/built-by-developers-for-developers">
   <img src="https://ostr.io/apple-touch-icon-60x60.png" height="20">
@@ -218,5 +219,6 @@ meteor test-packages ./ --port 8888
 
 ## Support our open source contributions
 
+- [Sponsor via GitHub](https://github.com/sponsors/dr-dimitru)
 - [Support via PayPal](https://paypal.me/veliovgroup) — support my open source contributions once or on regular basis
 - Use [ostr.io](https://ostr.io) — [Monitoring](https://snmp-monitoring.com), [Analytics](https://ostr.io/info/web-analytics), [WebSec](https://domain-protection.info), [Web-CRON](https://web-cron.info) and [Pre-rendering](https://prerendering.com) for a website
