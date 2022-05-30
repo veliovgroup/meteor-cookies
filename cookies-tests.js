@@ -86,6 +86,16 @@ if (Meteor.isClient) {
     test.equal(cookies.get('фывфыв'), testVal, 'js');
   });
 
+  Tinytest.add('cookies: set() / get() / has() - "Device undefined ("', function (test) {
+    const testVal = 'Device undefined (';
+    const testKey = 'device undefined';
+    const setRes = cookies.set(testKey, testVal);
+    test.isTrue(setRes);
+    test.isTrue(cookies.has(testKey));
+    test.equal(cookies.get(testKey, document.cookie), testVal, 'document.cookie');
+    test.equal(cookies.get(testKey), testVal, 'js');
+  });
+
   Tinytest.add('cookies: set() / get() / has() - FALSE', test => {
     const testVal = false;
     const setRes = cookies.set('testFalse', testVal);

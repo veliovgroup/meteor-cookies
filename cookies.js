@@ -244,7 +244,7 @@ const serialize = (key, val, opt = {}) => {
 };
 
 const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
-const isTypedRegEx = /false|true|null|undefined/;
+const isTypedRegEx = /false|true|null/;
 const deserialize = (string) => {
   if (typeof string !== 'string') {
     return string;
@@ -262,7 +262,11 @@ const deserialize = (string) => {
     }
     return string;
   } else if (isTypedRegEx.test(string)) {
-    return JSON.parse(string);
+    try {
+      return JSON.parse(string);
+    } catch (e) {
+      return string;
+    }
   }
   return string;
 };
