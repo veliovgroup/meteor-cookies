@@ -2,8 +2,26 @@ import { EJSON } from 'meteor/ejson';
 import { Meteor } from 'meteor/meteor';
 import { Cookies } from './cookies.js';
 
+const helpers = {
+  isArray(obj) {
+    return Array.isArray(obj);
+  },
+  clone(obj) {
+    if (!this.isObject(obj)) return obj;
+    return this.isArray(obj) ? obj.slice() : Object.assign({}, obj);
+  }
+};
+
+const _helpers = ['Number', 'Object', 'Function'];
+for (let i = 0; i < _helpers.length; i++) {
+  helpers['is' + _helpers[i]] = function (obj) {
+    return Object.prototype.toString.call(obj) === '[object ' + _helpers[i] + ']';
+  };
+}
+
+
 const antiCircular = (_obj) => {
-  const object = Object.assign({}, _obj);
+  const object = helpers.clone(_obj);
   const cache  = new Map();
   return JSON.parse(JSON.stringify(object, (key, value) => {
     if (typeof value === 'object' && value !== null) {
