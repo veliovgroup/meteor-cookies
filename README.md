@@ -220,5 +220,5 @@ meteor test-packages ./ --port 8888
 ## Support our open source contributions
 
 - [Sponsor via GitHub](https://github.com/sponsors/dr-dimitru)
-- [Support via PayPal](https://paypal.me/veliovgroup) — support my open source contributions once or on regular basis
+- [Support via PayPal](https://paypal.me/veliovgroup)
 - Use [ostr.io](https://ostr.io) — [Monitoring](https://snmp-monitoring.com), [Analytics](https://ostr.io/info/web-analytics), [WebSec](https://domain-protection.info), [Web-CRON](https://web-cron.info) and [Pre-rendering](https://prerendering.com) for a website
