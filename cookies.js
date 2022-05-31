@@ -33,7 +33,7 @@ for (let i = 0; i < _helpers.length; i++) {
   };
 }
 
-/*
+/**
  * @url https://github.com/jshttp/cookie/blob/master/index.js
  * @name cookie
  * @author jshttp
@@ -66,7 +66,7 @@ const decode = decodeURIComponent;
 const encode = encodeURIComponent;
 const pairSplitRegExp = /; */;
 
-/*
+/**
  * RegExp to match field-content in RFC 7230 sec 3.2
  *
  * field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
@@ -75,7 +75,7 @@ const pairSplitRegExp = /; */;
  */
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
 
-/*
+/**
  * @function
  * @name tryDecode
  * @param {String} str
@@ -91,7 +91,7 @@ const tryDecode = (str, d) => {
   }
 };
 
-/*
+/**
  * @function
  * @name parse
  * @param {String} str
@@ -131,7 +131,7 @@ const parse = (str, options) => {
   return obj;
 };
 
-/*
+/**
  * @function
  * @name antiCircular
  * @param data {Object} - Circular or any other object which needs to be non-circular
@@ -151,7 +151,7 @@ const antiCircular = (_obj) => {
   });
 };
 
-/*
+/**
  * @function
  * @name serialize
  * @param {String} name
@@ -271,7 +271,7 @@ const deserialize = (string) => {
   return string;
 };
 
-/*
+/**
  * @locus Anywhere
  * @class __cookies
  * @param opts {Object} - Options (configuration) object
@@ -305,7 +305,7 @@ class __cookies {
     }
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf __cookies
    * @name get
@@ -327,7 +327,7 @@ class __cookies {
     return void 0;
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf __cookies
    * @name set
@@ -356,7 +356,7 @@ class __cookies {
     return false;
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf __cookies
    * @name remove
@@ -398,7 +398,7 @@ class __cookies {
     return false;
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf __cookies
    * @name has
@@ -416,7 +416,7 @@ class __cookies {
     return cookieString.hasOwnProperty(key);
   }
 
-  /*
+  /**
    * @locus Anywhere
    * @memberOf __cookies
    * @name keys
@@ -430,7 +430,7 @@ class __cookies {
     return [];
   }
 
-  /*
+  /**
    * @locus Client
    * @memberOf __cookies
    * @name send
@@ -477,7 +477,7 @@ class __cookies {
   }
 }
 
-/*
+/**
  * @function
  * @locus Server
  * @summary Middleware handler
@@ -502,7 +502,7 @@ const __middlewareHandler = (request, response, opts) => {
   throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
 };
 
-/*
+/**
  * @locus Anywhere
  * @class Cookies
  * @param opts {Object}
@@ -584,7 +584,7 @@ class Cookies extends __cookies {
     }
   }
 
-  /*
+  /**
    * @locus Server
    * @memberOf Cookies
    * @name middleware
