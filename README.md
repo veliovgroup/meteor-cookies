@@ -8,15 +8,15 @@
 
 Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with support of *Client*, *Server*, *Browser*, *Cordova*, and other *Meteor*-supported environments.
 
-- 👨‍💻 Stable codebase, 80.000+ downloads;
+- 👨‍💻 Stable codebase, 250.000+ downloads;
 - 👨‍🔬 __~96% Tests coverage__;
 - 📦 No external dependencies, no `underscore`, no `jQuery`, no `Blaze`;
-- 🖥 Full support with same API on both *Server* and *Client* environments;
+- 🖥 Full support with same API across *Server* and *Client* environments;
 - 📱 Compatible with *Cordova*, *Browser* and other Meteor's *Client* environments;
 - ㊗️ Unicode support as cookies' value;
 - 👨‍💻 `String`, `Array`, `Object`, and `Boolean` are supported cookies' value types;
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok);
-- 📦 Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/VeliovGroup/Client-Storage#persistent-client-browser-storage).
+- 📦 Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/veliovgroup/Client-Storage#persistent-client-browser-storage).
 
 ## Install:
 

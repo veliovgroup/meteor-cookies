@@ -2,7 +2,7 @@ Package.describe({
   name: 'ostrio:cookies',
   version: '2.7.2',
   summary: 'Isomorphic bulletproof Server, Client, Browser, and Cordova cookies',
-  git: 'https://github.com/VeliovGroup/Meteor-Cookies',
+  git: 'https://github.com/veliovgroup/Meteor-Cookies',
   documentation: 'README.md'
 });
 

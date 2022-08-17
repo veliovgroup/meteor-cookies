@@ -1,1 +1,1 @@
-For full package history see [releases on GitHub](https://github.com/VeliovGroup/Meteor-Cookies/releases)
+For full package history see [releases on GitHub](https://github.com/veliovgroup/Meteor-Cookies/releases)
