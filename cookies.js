@@ -447,7 +447,7 @@ class __cookies {
       let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
       let query = '';
 
-      if (Meteor.isCordova && this.allowQueryStringCookies) {
+      if ((Meteor.isCordova || Meteor.isDesktop) && this.allowQueryStringCookies) {
         const cookiesKeys = this.keys();
         const cookiesArray = [];
         for (let i = 0; i < cookiesKeys.length; i++) {
