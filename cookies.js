@@ -86,7 +86,7 @@ const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
 const tryDecode = (str, d) => {
   try {
     return d(str);
-  } catch (e) {
+  } catch (_e) {
     return str;
   }
 };
@@ -140,7 +140,7 @@ const parse = (str, options) => {
 const antiCircular = (_obj) => {
   const object = helpers.clone(_obj);
   const cache  = new Map();
-  return JSON.stringify(object, (key, value) => {
+  return JSON.stringify(object, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
       if (cache.get(value)) {
         return void 0;
@@ -256,7 +256,7 @@ const deserialize = (string) => {
       try {
         return JSON.parse(decode(obj));
       } catch (e) {
-        console.error('[ostrio:cookies] [.get()] [deserialize()] Exception:', e, string, obj);
+        Meteor._debug('[ostrio:cookies] [.get()] [deserialize()] Exception:', e, string, obj);
         return string;
       }
     }
@@ -264,7 +264,7 @@ const deserialize = (string) => {
   } else if (isTypedRegEx.test(string)) {
     try {
       return JSON.parse(string);
-    } catch (e) {
+    } catch (_e) {
       return string;
     }
   }
