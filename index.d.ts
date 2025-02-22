@@ -1,6 +1,11 @@
 import type { Meteor } from 'meteor/meteor';
 import type { IncomingMessage, ServerResponse } from 'http';
 
+/**
+ * A dictionary of cookie values.
+ */
+export type CookieDict = { [key: string]: unknown };
+
 declare module 'meteor/ostrio:cookies' {
   /**
    * Options for setting a cookie.
@@ -15,7 +20,7 @@ declare module 'meteor/ostrio:cookies' {
      */
     domain?: string;
     /**
-     * The expiration date as a Date object or as a number (UNIX timestamp).
+     * The expiration date as a Date object or a number representing a UNIX timestamp (in milliseconds).
      */
     expires?: Date | number;
     /**
@@ -48,7 +53,7 @@ declare module 'meteor/ostrio:cookies' {
     /**
      * Current cookies as a string (e.g., document.cookie) or as an object.
      */
-    _cookies: string | { [key: string]: unknown };
+    _cookies: string | CookieDict;
     /**
      * Default cookies expiration time (max-age) in milliseconds.
      * If false, the cookie lasts for the session.
@@ -166,6 +171,10 @@ declare module 'meteor/ostrio:cookies' {
      * @returns A middleware function with signature (req, res, next) => void.
      * @throws {Meteor.Error} If used on the client.
      */
-    middleware(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void;
+    middleware(): (
+      req: IncomingMessage,
+      res: ServerResponse,
+      next: () => void
+    ) => void;
   }
 }
