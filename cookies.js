@@ -474,25 +474,7 @@ class __cookies {
     }
 
     if (this.runOnServer) {
-      let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
-      let query = '';
-
-      if ((Meteor.isCordova || Meteor.isDesktop) && this.allowQueryStringCookies) {
-        const cookiesKeys = this.keys();
-        const cookiesArray = [];
-        for (let i = 0; i < cookiesKeys.length; i++) {
-          const { sanitizedValue } = serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
-          const pair = `${cookiesKeys[i]}=${sanitizedValue}`;
-          if (!cookiesArray.includes(pair)) {
-            cookiesArray.push(pair);
-          }
-        }
-
-        if (cookiesArray.length) {
-          path = Meteor.absoluteUrl('___cookie___/set');
-          query = `?___cookies___=${encodeURIComponent(cookiesArray.join('; '))}`;
-        }
-      }
+      const { path, query } = this.__prepareSendData();
 
       fetch(`${path}${query}`, {
         credentials: 'include',
@@ -523,6 +505,22 @@ class __cookies {
       throw new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.');
     }
 
+    const { path, query } = this.__prepareSendData();
+
+    return await fetch(`${path}${query}`, {
+      credentials: 'include',
+      type: 'cors'
+    });
+  }
+
+  /**
+   * @locus Client
+   * @memberOf __cookies
+   * @name __prepareSendData
+   * @summary Prepare `path` and `query` for `.send()` and `.sendAsync()` methods
+   * @returns { path: string, query: string }
+   */
+  __prepareSendData() {
     let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
     let query = '';
 
@@ -543,10 +541,7 @@ class __cookies {
       }
     }
 
-    return await fetch(`${path}${query}`, {
-      credentials: 'include',
-      type: 'cors'
-    });
+    return { path, query };
   }
 }
 
