@@ -102,6 +102,14 @@ Returns an array of all readable cookies from this location
 
 Send all current cookies to server.
 
+### sendAsync
+
+Send all current cookies to server.
+
+```js
+const response = await cookies.sendAsync();
+```
+
 ## Examples:
 
 ```js

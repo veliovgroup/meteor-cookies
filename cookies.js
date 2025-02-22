@@ -478,6 +478,49 @@ class __cookies {
     }
     return void 0;
   }
+
+  /**
+   * @locus Client
+   * @memberOf __cookies
+   * @name sendAsync
+   * @summary Send all cookies over XHR to server.
+   * @throws {Meteor.Error|TypeError}
+   * @returns {Promise<Response>}
+   */
+  async sendAsync() {
+    if (Meteor.isServer) {
+      throw new Meteor.Error(400, 'Can\'t run `.send()` on server, it\'s Client only method!');
+    }
+
+    if (!this.runOnServer) {
+      throw new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.');
+    }
+
+    let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
+    let query = '';
+
+    if ((Meteor.isCordova || Meteor.isDesktop) && this.allowQueryStringCookies) {
+      const cookiesKeys = this.keys();
+      const cookiesArray = [];
+      for (let i = 0; i < cookiesKeys.length; i++) {
+        const { sanitizedValue } = serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
+        const pair = `${cookiesKeys[i]}=${sanitizedValue}`;
+        if (!cookiesArray.includes(pair)) {
+          cookiesArray.push(pair);
+        }
+      }
+
+      if (cookiesArray.length) {
+        path = Meteor.absoluteUrl('___cookie___/set');
+        query = `?___cookies___=${encodeURIComponent(cookiesArray.join('; '))}`;
+      }
+    }
+
+    return await fetch(`${path}${query}`, {
+      credentials: 'include',
+      type: 'cors'
+    });
+  }
 }
 
 /**
