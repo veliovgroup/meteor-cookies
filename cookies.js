@@ -360,7 +360,7 @@ class CookiesCore {
    * @name get
    * @param {string} key - The name of the cookie to read
    * @param {string} _tmp - Unparsed string instead of user's cookies
-   * @summary Read a cookie. If the cookie doesn't exist a null value will be returned.
+   * @summary Read a cookie. If the cookie doesn't exist a undefined value will be returned.
    * @returns {string|void}
    */
   get(key, _tmp) {
