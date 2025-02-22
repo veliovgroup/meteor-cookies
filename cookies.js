@@ -26,14 +26,17 @@ const helpers = {
       return obj;
     }
     return this.isArray(obj) ? [...obj] : { ...obj };
-  }
+  },
+  isNumber(obj) {
+    return Object.prototype.toString.call(obj) === '[object Number]';
+  },
+  isObject(obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]';
+  },
+  isFunction(obj) {
+    return Object.prototype.toString.call(obj) === '[object Function]';
+  },
 };
-const _helpers = ['Number', 'Object', 'Function'];
-for (let i = 0; i < _helpers.length; i++) {
-  helpers['is' + _helpers[i]] = function (obj) {
-    return Object.prototype.toString.call(obj) === '[object ' + _helpers[i] + ']';
-  };
-}
 
 const customEscape = (str) => {
   return String(str).replace(/[^A-Za-z0-9@*\_\+\-\.\/]/g, (ch) => {
@@ -303,7 +306,7 @@ const deserialize = (string) => {
 
 /**
  * @locus Anywhere
- * @class __cookies
+ * @class CookiesCore
  * @param {object} opts - Options (configuration) object
  * @param {object|string} opts._cookies - Current cookies as String or Object
  * @param {number|boolean} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
@@ -313,7 +316,7 @@ const deserialize = (string) => {
  * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
  * @summary Internal Class
  */
-class __cookies {
+class CookiesCore {
   constructor(opts) {
     this.__pendingCookies = [];
     this.TTL = opts.TTL || false;
@@ -337,7 +340,7 @@ class __cookies {
 
   /**
    * @locus Anywhere
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name get
    * @param {string} key - The name of the cookie to read
    * @param {string} _tmp - Unparsed string instead of user's cookies
@@ -359,7 +362,7 @@ class __cookies {
 
   /**
    * @locus Anywhere
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name set
    * @param {string} key   - The name of the cookie to create/overwrite
    * @param {string} value - The value of the cookie
@@ -388,7 +391,7 @@ class __cookies {
 
   /**
    * @locus Anywhere
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name remove
    * @param {string} key - The name of the cookie to create/overwrite
    * @param {string} path - [Optional] The path from where the cookie will be
@@ -430,7 +433,7 @@ class __cookies {
 
   /**
    * @locus Anywhere
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name has
    * @param {string} key - The name of the cookie to create/overwrite
    * @param {string} _tmp - Unparsed string instead of user's cookies
@@ -448,7 +451,7 @@ class __cookies {
 
   /**
    * @locus Anywhere
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name keys
    * @summary Returns an array of all readable cookies from this location.
    * @returns {string[]}
@@ -462,7 +465,7 @@ class __cookies {
 
   /**
    * @locus Client
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name send
    * @param cb {function} - Callback
    * @summary Send all cookies over XHR to server.
@@ -490,7 +493,7 @@ class __cookies {
 
   /**
    * @locus Client
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name sendAsync
    * @summary Send all cookies over XHR to server.
    * @throws {Meteor.Error|TypeError}
@@ -515,7 +518,7 @@ class __cookies {
 
   /**
    * @locus Client
-   * @memberOf __cookies
+   * @memberOf CookiesCore
    * @name __prepareSendData
    * @summary Prepare `path` and `query` for `.send()` and `.sendAsync()` methods
    * @returns { path: string, query: string }
@@ -550,8 +553,9 @@ class __cookies {
  * @locus Server
  * @summary Middleware handler
  * @param {IncomingMessage} request
- * @param {ServerResponse} request
+ * @param {ServerResponse} response
  * @param { runOnServer: boolean, allowQueryStringCookies: boolean, TTL: number|boolean } opts
+ * @returns {CookiesCore}
  * @throws {Meteor.Error}
  * @private
  */
@@ -565,7 +569,7 @@ const __middlewareHandler = (request, response, opts) => {
     _cookies = parse(request.headers.cookie);
   }
 
-  return new __cookies({
+  return new CookiesCore({
     _cookies,
     TTL: opts.TTL,
     runOnServer: opts.runOnServer,
@@ -577,16 +581,18 @@ const __middlewareHandler = (request, response, opts) => {
 /**
  * @locus Anywhere
  * @class Cookies
- * @param opts {object}
- * @param opts.TTL {number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
- * @param opts.auto {boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
- * @param opts.handler {function} - [Server] Middleware handler
- * @param opts.runOnServer {boolean} - Expose Cookies class to Server
- * @param opts.allowQueryStringCookies {boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigins {Regex|boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
- * @summary Main Cookie class
+ * @extends CookiesCore
+ * @param {object} opts
+ * @param {number} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
+ * @param {boolean} opts.auto - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
+ * @param {function} opts.handler - [Server] Custom Middleware handler
+ * @param {function} opts.onCookies - [Server] Hook/Callback that called when cookies are received via `.send` and `.sendAsync` methods from server
+ * @param {boolean} opts.runOnServer - Expose Cookies class to Server
+ * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
+ * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
+ * @summary Main Cookies class
  */
-class Cookies extends __cookies {
+class Cookies extends CookiesCore {
   constructor(opts = {}) {
     opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
@@ -606,51 +612,7 @@ class Cookies extends __cookies {
       if (opts.runOnServer && !Cookies.isLoadedOnServer) {
         Cookies.isLoadedOnServer = true;
         if (opts.auto) {
-          WebApp.connectHandlers.use((req, res, next) => {
-            if (urlRE.test(req._parsedUrl.path)) {
-              const matchedCordovaOrigin = !!req.headers.origin
-                && this.allowedCordovaOrigins
-                && this.allowedCordovaOrigins.test(req.headers.origin);
-              const matchedOrigin = matchedCordovaOrigin
-                || (!!req.headers.origin && this.originRE.test(req.headers.origin));
-
-              if (matchedOrigin) {
-                res.setHeader('Access-Control-Allow-Credentials', 'true');
-                res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-              }
-
-              const cookiesArray = [];
-              let cookiesObject = {};
-              if (matchedCordovaOrigin && opts.allowQueryStringCookies && req.query.___cookies___) {
-                cookiesObject = parse(decodeURIComponent(req.query.___cookies___));
-              } else if (req.headers.cookie) {
-                cookiesObject = parse(req.headers.cookie);
-              }
-
-              const cookiesKeys = Object.keys(cookiesObject);
-              if (cookiesKeys.length) {
-                for (let i = 0; i < cookiesKeys.length; i++) {
-                  const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
-                  if (!cookiesArray.includes(cookieString)) {
-                    cookiesArray.push(cookieString);
-                  }
-                }
-
-                if (cookiesArray.length) {
-                  res.setHeader('Set-Cookie', cookiesArray);
-                }
-              }
-
-              helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, opts));
-
-              res.writeHead(200);
-              res.end('');
-            } else {
-              req.Cookies = __middlewareHandler(req, res, opts);
-              helpers.isFunction(this.handler) && this.handler(req.Cookies);
-              next();
-            }
-          });
+          WebApp.connectHandlers.use(this.__autoMiddleware.bind(this));
         }
       }
     }
@@ -662,7 +624,7 @@ class Cookies extends __cookies {
    * @name middleware
    * @summary Get Cookies instance into callback
    * @throws {Meteor.Error}
-   * @returns {void}
+   * @returns {function(req: IncomingMessage, res: ServerResponse, next: NextFunction): void}
    */
   middleware() {
     if (!Meteor.isServer) {
@@ -674,6 +636,62 @@ class Cookies extends __cookies {
       next();
     };
   }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @name __autoMiddleware
+   * @param {IncomingMessage} req
+   * @param {ServerResponse} res
+   * @param {NextFunction} next
+   * @summary Default middleware that used when `{auto: true}` (default option)
+   * @returns {void}
+   */
+  __autoMiddleware(req, res, next) {
+    if (urlRE.test(req._parsedUrl.path)) {
+      const matchedCordovaOrigin = !!req.headers.origin
+        && this.allowedCordovaOrigins
+        && this.allowedCordovaOrigins.test(req.headers.origin);
+      const matchedOrigin = matchedCordovaOrigin
+        || (!!req.headers.origin && this.originRE.test(req.headers.origin));
+
+      if (matchedOrigin) {
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      }
+
+      const cookiesArray = [];
+      let cookiesObject = {};
+      if (matchedCordovaOrigin && this.opts.allowQueryStringCookies && req.query.___cookies___) {
+        cookiesObject = parse(decodeURIComponent(req.query.___cookies___));
+      } else if (req.headers.cookie) {
+        cookiesObject = parse(req.headers.cookie);
+      }
+
+      const cookiesKeys = Object.keys(cookiesObject);
+      if (cookiesKeys.length) {
+        for (let i = 0; i < cookiesKeys.length; i++) {
+          const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
+          if (!cookiesArray.includes(cookieString)) {
+            cookiesArray.push(cookieString);
+          }
+        }
+
+        if (cookiesArray.length) {
+          res.setHeader('Set-Cookie', cookiesArray);
+        }
+      }
+
+      helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, this.opts));
+
+      res.writeHead(200);
+      res.end('');
+    } else {
+      req.Cookies = __middlewareHandler(req, res, this.opts);
+      helpers.isFunction(this.handler) && this.handler(req.Cookies);
+      next();
+    }
+  }
 }
 
 if (Meteor.isServer) {
@@ -681,4 +699,4 @@ if (Meteor.isServer) {
 }
 
 /* Export the Cookies class */
-export { Cookies };
+export { Cookies, CookiesCore };
