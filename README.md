@@ -34,7 +34,9 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
   - [`.sendAsync()`](#sendasync) – Sync cookies asynchronously
   - [`.middleware()`](#middleware) – Register cookie middleware manually
 - [Examples](#examples)
-  - [Alternative Usage](#alternative-usage)
+  - [Client Usage](#example-client-usage)
+  - [Server Usage](#example-server-usage)
+  - [Alternative Usage](#example-alternative-usage)
 - [Running Tests](#running-tests)
 - [Support Our Open Source Contributions](#support-our-open-source-contributions)
 
@@ -102,6 +104,8 @@ const cookies = new Cookies({
 });
 ```
 
+---
+
 ### `.get()`
 
 *(Anywhere)* Read a cookie. Returns `undefined` if the cookie is not found
@@ -115,6 +119,8 @@ cookies.get('age'); // undefined if not found
 cookies.set('age', 25); // returns true
 cookies.get('age'); // returns 25
 ```
+
+---
 
 ### `.set()`
 
@@ -144,6 +150,8 @@ cookies.set('age', 25, {
 });
 ```
 
+---
+
 ### `.remove()`
 
 *(Anywhere)* Remove cookie(s)
@@ -164,6 +172,8 @@ const isRemoved = cookies.remove('age', '/'); // boolean
 const isRemoved = cookies.remove(key, '/', 'example.com'); // boolean
 ```
 
+---
+
 ### `.has()`
 
 *(Anywhere)* Check if a cookie exists
@@ -177,6 +187,8 @@ const hasKey = cookies.has(key); // boolean
 const hasKey = cookies.has('age'); // boolean
 ```
 
+---
+
 ### `.keys()`
 
 *(Anywhere)* Returns an array of all cookie names
@@ -184,6 +196,8 @@ const hasKey = cookies.has('age'); // boolean
 ```js
 const cookieKeys = cookies.keys(); // string[] (e.g., ['locale', 'country', 'gender'])
 ```
+
+---
 
 ### `.send()`
 
@@ -203,6 +217,8 @@ cookies.send((error, response) => {
 });
 ```
 
+---
+
 ### `.sendAsync()`
 
 *(Client only)* Asynchronously send all current cookies to the server via XHR
@@ -211,6 +227,8 @@ cookies.send((error, response) => {
 const response = await cookies.sendAsync();
 console.log('Cookies synced:', response);
 ```
+
+---
 
 ### `.middleware()`
 
@@ -233,6 +251,8 @@ WebApp.connectHandlers.use(cookies.middleware());
 
 ## Examples
 
+Use `new Cookies()` on *Client*, *Server*, or both separately or in the same file
+
 ### Example: Client Usage
 
 ```js
@@ -246,7 +266,7 @@ cookies.set('gender', 'male');
 
 console.log(cookies.get('gender')); // "male"
 console.log(cookies.has('locale')); // true
-console.log(cookies.keys());        // ['locale', 'country', 'gender']
+console.log(cookies.keys()); // ['locale', 'country', 'gender']
 
 cookies.remove('locale');
 console.log(cookies.get('locale')); // undefined
@@ -272,7 +292,7 @@ WebApp.connectHandlers.use((req, res, next) => {
 });
 ```
 
-### Alternative Usage
+### Example: Alternative Usage
 
 ```js
 import { Meteor } from 'meteor/meteor';
