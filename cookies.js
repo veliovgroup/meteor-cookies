@@ -38,6 +38,14 @@ const helpers = {
   },
 };
 
+/**
+ * @function
+ * @name customEscape
+ * @param {string} str
+ * @returns {string}
+ * @summary Custom implementation for deprecated `escape` function
+ * @private
+ */
 const customEscape = (str) => {
   return String(str).replace(/[^A-Za-z0-9@*\_\+\-\.\/]/g, (ch) => {
     const code = ch.charCodeAt(0);
@@ -55,6 +63,14 @@ const customEscape = (str) => {
   });
 };
 
+/**
+ * @function
+ * @name customUnescape
+ * @param {string} str
+ * @returns {string}
+ * @summary Custom implementation for deprecated `unescape` function
+ * @private
+ */
 const customUnescape = (str) => {
   return String(str).replace(/(%u[0-9A-Fa-f]{4})|(%[0-9A-Fa-f]{2})/g, (match) => {
     if (match.startsWith('%u')) {
@@ -128,7 +144,7 @@ const tryDecode = (str, d) => {
  * @name parse
  * @param {string} str
  * @param { decode: function } [options]
- * @return {object}
+ * @returns {[key: string]: unknown}
  * @summary
  * Parse a cookie header.
  * Parse the given cookie header string into an object
@@ -191,7 +207,7 @@ const antiCircular = (_obj) => {
  * @param {string} name
  * @param {string} val
  * @param {object} [options]
- * @return { cookieString: String, sanitizedValue: Mixed }
+ * @returns { cookieString: String, sanitizedValue: Mixed }
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
