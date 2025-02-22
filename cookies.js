@@ -489,7 +489,7 @@ class __cookies {
    */
   async sendAsync() {
     if (Meteor.isServer) {
-      throw new Meteor.Error(400, 'Can\'t run `.send()` on server, it\'s Client only method!');
+      throw new Meteor.Error(400, 'Can\'t run `.sendAsync()` on server, it\'s Client only method!');
     }
 
     if (!this.runOnServer) {
@@ -527,26 +527,29 @@ class __cookies {
  * @function
  * @locus Server
  * @summary Middleware handler
+ * @param {IncomingMessage} request
+ * @param {ServerResponse} request
+ * @param { runOnServer: boolean, allowQueryStringCookies: boolean, TTL: number|boolean } opts
  * @throws {Meteor.Error}
  * @private
  */
 const __middlewareHandler = (request, response, opts) => {
   let _cookies = {};
-  if (opts.runOnServer) {
-    if (request.headers && request.headers.cookie) {
-      _cookies = parse(request.headers.cookie);
-    }
-
-    return new __cookies({
-      _cookies,
-      TTL: opts.TTL,
-      runOnServer: opts.runOnServer,
-      response,
-      allowQueryStringCookies: opts.allowQueryStringCookies
-    });
+  if (!opts.runOnServer) {
+    throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
   }
 
-  throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
+  if (request.headers && request.headers.cookie) {
+    _cookies = parse(request.headers.cookie);
+  }
+
+  return new __cookies({
+    _cookies,
+    TTL: opts.TTL,
+    runOnServer: opts.runOnServer,
+    response,
+    allowQueryStringCookies: opts.allowQueryStringCookies
+  });
 };
 
 /**
