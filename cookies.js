@@ -35,6 +35,23 @@ for (let i = 0; i < _helpers.length; i++) {
   };
 }
 
+const customEscape = (str) => {
+  return String(str).replace(/[^A-Za-z0-9@*\_\+\-\.\/]/g, (ch) => {
+    const code = ch.charCodeAt(0);
+    if (code < 256) {
+      let hex = code.toString(16).toUpperCase();
+      return '%' + (hex.length === 1 ? '0' + hex : hex);
+    }
+
+    let hex = code.toString(16).toUpperCase();
+    // Ensure 4-digit hexadecimal
+    while (hex.length < 4) {
+      hex = '0' + hex;
+    }
+    return '%u' + hex;
+  });
+};
+
 /**
  * @url https://github.com/jshttp/cookie/blob/master/index.js
  * @name cookie
@@ -121,7 +138,7 @@ const parse = (str, options) => {
       return;
     }
     key = pair.substr(0, eqIndx).trim();
-    key = tryDecode(unescape(key), (opt.decode || decode));
+    key = tryDecode(customUnescape(key), (opt.decode || decode));
     val = pair.substr(++eqIndx, pair.length).trim();
     if (val[0] === '"') {
       val = val.slice(1, -1);
@@ -172,7 +189,7 @@ const serialize = (key, val, opt = {}) => {
   let name;
 
   if (!fieldContentRegExp.test(key)) {
-    name = escape(key);
+    name = customEscape(key);
   } else {
     name = key;
   }
@@ -187,7 +204,7 @@ const serialize = (key, val, opt = {}) => {
     } else {
       value = encode(value);
       if (value && !fieldContentRegExp.test(value)) {
-        value = escape(value);
+        value = customEscape(value);
       }
     }
   } else {
