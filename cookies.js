@@ -78,8 +78,8 @@ const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
 /**
  * @function
  * @name tryDecode
- * @param {String} str
- * @param {Function} d
+ * @param {string} str
+ * @param {function} d
  * @summary Try decoding a string using a decoding function.
  * @private
  */
@@ -94,9 +94,9 @@ const tryDecode = (str, d) => {
 /**
  * @function
  * @name parse
- * @param {String} str
- * @param {Object} [options]
- * @return {Object}
+ * @param {string} str
+ * @param { decode: function } [options]
+ * @return {object}
  * @summary
  * Parse a cookie header.
  * Parse the given cookie header string into an object
@@ -134,7 +134,8 @@ const parse = (str, options) => {
 /**
  * @function
  * @name antiCircular
- * @param data {Object} - Circular or any other object which needs to be non-circular
+ * @param data {object} - Circular or any other object which needs to be non-circular
+ * @returns {string}
  * @private
  */
 const antiCircular = (_obj) => {
@@ -153,17 +154,17 @@ const antiCircular = (_obj) => {
 
 /**
  * @function
+ * @private
  * @name serialize
- * @param {String} name
- * @param {String} val
- * @param {Object} [options]
+ * @param {string} name
+ * @param {string} val
+ * @param {object} [options]
  * @return { cookieString: String, sanitizedValue: Mixed }
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
  * http headers. An optional options object specified cookie parameters.
  * serialize('foo', 'bar', { httpOnly: true }) => "foo=bar; httpOnly"
- * @private
  */
 const serialize = (key, val, opt = {}) => {
   let name;
@@ -274,13 +275,13 @@ const deserialize = (string) => {
 /**
  * @locus Anywhere
  * @class __cookies
- * @param opts {Object} - Options (configuration) object
- * @param opts._cookies {Object|String} - Current cookies as String or Object
- * @param opts.TTL {Number|Boolean} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
- * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
- * @param opts.response {http.ServerResponse|Object} - This object is created internally by a HTTP server
- * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
+ * @param {object} opts - Options (configuration) object
+ * @param {object|string} opts._cookies - Current cookies as String or Object
+ * @param {number|boolean} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
+ * @param {boolean} opts.runOnServer - Expose Cookies class to Server
+ * @param {http.ServerResponse|object} opts.response - This object is created internally by a HTTP server
+ * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
+ * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
  * @summary Internal Class
  */
 class __cookies {
@@ -309,10 +310,10 @@ class __cookies {
    * @locus Anywhere
    * @memberOf __cookies
    * @name get
-   * @param {String} key  - The name of the cookie to read
-   * @param {String} _tmp - Unparsed string instead of user's cookies
+   * @param {string} key - The name of the cookie to read
+   * @param {string} _tmp - Unparsed string instead of user's cookies
    * @summary Read a cookie. If the cookie doesn't exist a null value will be returned.
-   * @returns {String|void}
+   * @returns {string|void}
    */
   get(key, _tmp) {
     const cookieString = _tmp ? parse(_tmp) : this.cookies;
@@ -331,11 +332,11 @@ class __cookies {
    * @locus Anywhere
    * @memberOf __cookies
    * @name set
-   * @param {String} key   - The name of the cookie to create/overwrite
-   * @param {String} value - The value of the cookie
-   * @param {Object} opts  - [Optional] Cookie options (see readme docs)
+   * @param {string} key   - The name of the cookie to create/overwrite
+   * @param {string} value - The value of the cookie
+   * @param {object} opts  - [Optional] Cookie options (see readme docs)
    * @summary Create/overwrite a cookie.
-   * @returns {Boolean}
+   * @returns {boolean}
    */
   set(key, value, opts = {}) {
     if (key && !helpers.isUndefined(value)) {
@@ -360,18 +361,18 @@ class __cookies {
    * @locus Anywhere
    * @memberOf __cookies
    * @name remove
-   * @param {String} key    - The name of the cookie to create/overwrite
-   * @param {String} path   - [Optional] The path from where the cookie will be
+   * @param {string} key - The name of the cookie to create/overwrite
+   * @param {string} path - [Optional] The path from where the cookie will be
    * readable. E.g., "/", "/mydir"; if not specified, defaults to the current
    * path of the current document location (string or null). The path must be
    * absolute (see RFC 2965). For more information on how to use relative paths
    * in this argument, see: https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter
-   * @param {String} domain - [Optional] The domain from where the cookie will
+   * @param {string} domain - [Optional] The domain from where the cookie will
    * be readable. E.g., "example.com", ".example.com" (includes all subdomains)
    * or "subdomain.example.com"; if not specified, defaults to the host portion
    * of the current document location (string or null).
    * @summary Remove a cookie(s).
-   * @returns {Boolean}
+   * @returns {boolean}
    */
   remove(key, path = '/', domain = '') {
     if (key && this.cookies.hasOwnProperty(key)) {
@@ -402,10 +403,10 @@ class __cookies {
    * @locus Anywhere
    * @memberOf __cookies
    * @name has
-   * @param {String} key  - The name of the cookie to create/overwrite
-   * @param {String} _tmp - Unparsed string instead of user's cookies
+   * @param {string} key - The name of the cookie to create/overwrite
+   * @param {string} _tmp - Unparsed string instead of user's cookies
    * @summary Check whether a cookie exists in the current position.
-   * @returns {Boolean}
+   * @returns {boolean}
    */
   has(key, _tmp) {
     const cookieString = _tmp ? parse(_tmp) : this.cookies;
@@ -421,7 +422,7 @@ class __cookies {
    * @memberOf __cookies
    * @name keys
    * @summary Returns an array of all readable cookies from this location.
-   * @returns {[String]}
+   * @returns {string[]}
    */
   keys() {
     if (this.cookies) {
@@ -434,7 +435,7 @@ class __cookies {
    * @locus Client
    * @memberOf __cookies
    * @name send
-   * @param cb {Function} - Callback
+   * @param cb {function} - Callback
    * @summary Send all cookies over XHR to server.
    * @returns {void}
    */
@@ -481,6 +482,7 @@ class __cookies {
  * @function
  * @locus Server
  * @summary Middleware handler
+ * @throws {Meteor.Error}
  * @private
  */
 const __middlewareHandler = (request, response, opts) => {
@@ -505,13 +507,13 @@ const __middlewareHandler = (request, response, opts) => {
 /**
  * @locus Anywhere
  * @class Cookies
- * @param opts {Object}
- * @param opts.TTL {Number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
- * @param opts.auto {Boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
- * @param opts.handler {Function} - [Server] Middleware handler
- * @param opts.runOnServer {Boolean} - Expose Cookies class to Server
- * @param opts.allowQueryStringCookies {Boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
- * @param opts.allowedCordovaOrigins {Regex|Boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
+ * @param opts {object}
+ * @param opts.TTL {number} - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
+ * @param opts.auto {boolean} - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
+ * @param opts.handler {function} - [Server] Middleware handler
+ * @param opts.runOnServer {boolean} - Expose Cookies class to Server
+ * @param opts.allowQueryStringCookies {boolean} - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
+ * @param opts.allowedCordovaOrigins {Regex|boolean} - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
  * @summary Main Cookie class
  */
 class Cookies extends __cookies {
@@ -589,6 +591,7 @@ class Cookies extends __cookies {
    * @memberOf Cookies
    * @name middleware
    * @summary Get Cookies instance into callback
+   * @throws {Meteor.Error}
    * @returns {void}
    */
   middleware() {
