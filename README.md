@@ -1,9 +1,9 @@
 [![support](https://img.shields.io/badge/support-GitHub-white)](https://github.com/sponsors/dr-dimitru)
 [![support](https://img.shields.io/badge/support-PayPal-white)](https://paypal.me/veliovgroup)
-<a href="https://ostr.io/info/built-by-developers-for-developers?ref=github-cookies-repo-top"><img src="https://ostr.io/apple-touch-icon-60x60.png" height="20"></a>
-<a href="https://meteor-files.com/?ref=github-cookies-repo-top"><img src="https://meteor-files.com/apple-touch-icon-60x60.png" height="20"></a>
+<a href="https://ostr.io/info/built-by-developers-for-developers?ref=github-cookies-repo-top"><img src="https://ostr.io/apple-touch-icon-60x60.png" alt="ostr.io" height="20"></a>
+<a href="https://meteor-files.com/?ref=github-cookies-repo-top"><img src="https://meteor-files.com/apple-touch-icon-60x60.png" alt="meteor-files.com" height="20"></a>
 
-# Isomorphic Cookies
+# Isomorphic Cookies for Meteor.js
 
 Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with support of *Client*, *Server*, *Browser*, *Cordova*, *Meteor-Desktop*, and other *Meteor*-supported environments.
 
@@ -16,6 +16,21 @@ Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with suppor
 - 👨‍💻 `String`, `Array`, `Object`, and `Boolean` are supported cookies' value types;
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok);
 - 📦 Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/veliovgroup/Client-Storage#persistent-client-browser-storage).
+
+## ToC:
+
+- [Installation](#install)
+- [Import](#es6-import)
+- [FAQ](#faq)
+- [API](#api)
+  - [`new Cookies` constructor](#new-cookies) - Create new `Cookies` instance
+  - [`.get()`](#get) - Read cookie
+  - [`.set()`](#set) - Set cookie
+  - [`.remove()`](#remove) - Remove all cookies or single by key
+  - [`.keys()`](#keys) - List all cookie keys
+  - [`.send()`](#send) - Sync cookies with server
+  - [`.sendAsync()`](#sendasync) - Sync cookies with server
+  - [`.middleware()`](#middleware) - Handle to manually register Cookie's middleware
 
 ## Install:
 
@@ -37,35 +52,39 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 ## API:
 
-- __Note__ — On a server, cookies will be set __only__ after headers are sent (on next route or page reload). To send cookies from *Client* to *Server* without a page reload use `send()` method.
-- __Server Usage Note__ — On a server Cookies implemented as a middleware. To get access to current user's cookies use `req.Cookies` instance. For more - see examples section below.
+- __Note__ — On a server, cookies will be set __only__ after headers are sent (on next route or page reload). To send cookies from *Client* to *Server* without a page reload use `sendAsync()` or `send()` method.
+- __Server Usage Note__ — On a server Cookies implemented as a middleware that extends `IncomingMessage` with `Cookies` instance. To get access to current cookies use `req.Cookies` instance in any consequent middlewares. That's why it's important to register `Cookies` middleware before other middlewares and routes. For more - see examples section below.
 
-### Fetch cookies `new Cookies(opts)` [*Isomorphic*]
+### `new Cookies()`
 
-Create new instance of Cookies
+__Anywhere__. Fetch cookies by creating new instance of `Cookies`. To make sure cookies available on *Server* and *Client* `new Cookies` should be initialized and imported in both environments.
 
-- `opts.auto` {*Boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
-- `opts.handler` {*Function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternative Usage" section
-- `opts.onCookies` {*Function*} - [*Server*] Callback/hook triggered after `.send()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
-- `opts.TTL` {*Number*|*Boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
-- `opts.runOnServer` {*Boolean*} - Set to `false` to avoid server usage (by default - `true`)
-- `opts.allowQueryStringCookies` {*Boolean*} - Allow passing Cookies in a query string (in URL). Primary should be used only in *Cordova* environment. Note: this option will be used only on Cordova
-- `opts.allowedCordovaOrigins` {*Regex|Boolean*} - [*Server*] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX. Set to default `^http:\/\/localhost:12[0-9]{3}$` if set to `true`. Default: `false`
+- `opts.auto` {*boolean*} - [*Server*] Auto-bind in middleware as `req.Cookies`, by default `true`
+- `opts.handler` {*function*} - [*Server*] Middleware function (e.g. hook/callback called within middleware pipeline) with single argument `cookies` as `Cookies` instance. See "Alternative Usage" section
+- `opts.onCookies` {*function*} - [*Server*] Callback/hook triggered after `.send()` or `.sendAsync()` method called on *Client* and received by *Server*, called with single argument `cookies` as `Cookies` instance. __Note:__ this hook available only if `auto` option is `true`
+- `opts.TTL` {*number*|*boolean*} - Default cookies expiration time (max-age) in milliseconds, by default - `false` (*session, no TTL*)
+- `opts.runOnServer` {*boolean*} - Set to `false` to avoid server usage (by default - `true`)
+- `opts.allowQueryStringCookies` {*boolean*} - Allow passing Cookies in a query string (in URL). Primary should be used only in *Cordova* environment. Note: this option will be used only on Cordova
+- `opts.allowedCordovaOrigins` {*Regex|boolean*} - [*Server*] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX. Set to default `^http:\/\/localhost:12[0-9]{3}$` if set to `true`. Default: `false`
 
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';
+
 const cookies = new Cookies();
+const cookies = new Cookies({
+  TTL: 31557600000 // set all cookies TTL to one year
+});
 ```
 
-### `cookies.get(key)` [*Isomorphic*]
+### get
 
-Read a cookie. If the cookie doesn't exist a `null` will be returned.
+__Anywhere__. Read a cookie. If the cookie doesn't exist a `null` will be returned.
 
 - `key` {*String*} - The name of the cookie to read
 
-### `cookies.set(key, value, [opts])` [*Isomorphic*]
+### set
 
-Create/overwrite a cookie.
+__Anywhere__. Create/overwrite a cookie.
 
 - `key` {*String*} - The name of the cookie to create/overwrite
 - `value` {*String*|*Number*|*Boolean*|*Object*|*Array*} - The value of the cookie
@@ -79,35 +98,83 @@ Create/overwrite a cookie.
 - `opts.sameSite` {*Boolean*} {*String*: *None*, *Strict*, or *Lax*} - [Optional] Cross-site cookies usage policy. Read more on [wikipedia](https://en.wikipedia.org/wiki/HTTP_cookie#SameSite_cookie), [web.dev](https://web.dev/samesite-cookies-explained/), and [ietf](https://tools.ietf.org/html/draft-west-first-party-cookies-05). Default: `false`
 - `opts.firstPartyOnly` {*Boolean*} - [Optional] *Deprecated use `sameSite` instead*
 
-### `cookies.remove([key], [path], [domain])` [*Isomorphic*]
+```js
+const isSet = cookies.set(key, value, opts); // boolean
+const isSet = cookies.set('age', 25, {
+  path: '/',
+  secure: true,
+});
+```
+
+### remove
+
+__Anywhere__. Remove cookie on current location path and/or other domain
 
 - `remove()` - Remove all cookies on current domain
 - `remove(key)` - Remove a cookie on current domain
 - `remove(key, path, domain)`:
-  - `key` {*String*} - The name of the cookie to create/overwrite
-  - `path` {*String*} - [Optional] The path from where the cookie was readable. E.g., "/", "/mydir"; if not specified, defaults to the current path of the current document location (string or null). The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, [read more](https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter)
-  - `domain` {*String*} - [Optional] The domain from where the cookie was readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
+  - `key` {*string*} - The name of the cookie to create/overwrite
+  - `path` {*string*} - [Optional] The path from where the cookie was readable. E.g., "/", "/mydir"; if not specified, defaults to the current path of the current document location (string or null). The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, [read more](https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter)
+  - `domain` {*string*} - [Optional] The domain from where the cookie was readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
 
-### `cookies.has(key)` [*Isomorphic*]
+```js
+const isRemoved = cookies.remove(key, path, domain); // boolean
+const isRemoved = cookies.remove('age', '/'); // boolean
+const isRemoved = cookies.remove(key, '/', 'example.com'); // boolean
+```
 
-Check whether a cookie exists in the current position, returns boolean value
+### has
 
-- `key` {*String*} - The name of the cookie to check
+__Anywhere__. Check whether a cookie exists in the current position, returns boolean value
 
-### `cookies.keys()` [*Isomorphic*]
+- `key` {*string*} - The name of the cookie to check
 
-Returns an array of all readable cookies from this location
+```js
+const hasKey = cookies.has(key); // boolean
+const hasKey = cookies.has('age'); // boolean
+```
 
-### `cookies.send([callback])` [*Client*]
+### keys
 
-Send all current cookies to server.
+__Anywhere__. Returns an array of all readable cookies from this location
+
+```js
+const arrayOfKeys = cookies.keys(); // string[]
+```
+
+### send
+
+__Client__. Sync all current cookies with server.
+
+- `callback` {*function*} - Callback function
+
+```js
+cookies.send((error, response) => {});
+```
 
 ### sendAsync
 
-Send all current cookies to server.
+__Client__. Sync all current cookies with server.
 
 ```js
 const response = await cookies.sendAsync();
+```
+
+### middleware
+
+__Server__. Manually register middleware that will call `handler` callback.
+
+```js
+import { WebApp } from 'meteor/webapp';
+import { Cookies } from 'meteor/ostrio:cookies';
+
+const c = new Cookies({
+  auto: false,
+  handler(cookies) {
+    // ... see "examples" section below
+  }
+});
+WebApp.connectHandlers.use(c.middleware());
 ```
 
 ## Examples:
@@ -146,6 +213,8 @@ if (Meteor.isClient) {
 if (Meteor.isServer) {
   const { WebApp } = require('meteor/webapp');
 
+  // Custom or any other registered middleware
+  // will have `req.Cookies` after `new Cookies()` was called on server
   WebApp.connectHandlers.use((req, res, next) => {
     cookies = req.Cookies;
 
@@ -195,17 +264,16 @@ if (Meteor.isClient) {
 if (Meteor.isServer) {
   const { WebApp } = require('meteor/webapp');
 
-  const cookie = new Cookies({
+  const c = new Cookies({
     auto: false, // Do not bind as a middleware by default (recommended, but not required)
     handler(cookies) {
-      cookies.set('gender', 'male'); //true
       cookies.get('gender'); //male
       cookies.has('city'); //false
       cookies.keys(); //['gender']
     }
   });
 
-  WebApp.connectHandlers.use(cookie.middleware());
+  WebApp.connectHandlers.use(c.middleware());
 }
 ```
 
