@@ -22,8 +22,10 @@ const helpers = {
     return Array.isArray(obj);
   },
   clone(obj) {
-    if (!this.isObject(obj)) return obj;
-    return this.isArray(obj) ? obj.slice() : Object.assign({}, obj);
+    if (!this.isObject(obj)) {
+      return obj;
+    }
+    return this.isArray(obj) ? [...obj] : { ...obj };
   }
 };
 const _helpers = ['Number', 'Object', 'Function'];
