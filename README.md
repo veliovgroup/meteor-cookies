@@ -15,6 +15,7 @@ Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with suppor
 - ㊗️ Unicode support as cookies' value;
 - 👨‍💻 `String`, `Array`, `Object`, and `Boolean` are supported cookies' value types;
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok);
+- 📦 Shipped with [types](https://github.com/veliovgroup/meteor-cookies/blob/master/index.d.ts);
 - 📦 Looking for *Client*'s (Browser) persistent storage? Try [`ClientStorage` package](https://github.com/veliovgroup/Client-Storage#persistent-client-browser-storage).
 
 ## ToC:
@@ -31,6 +32,10 @@ Isomorphic and bulletproof 🍪 cookies for `meteor.js` applications with suppor
   - [`.send()`](#send) - Sync cookies with server
   - [`.sendAsync()`](#sendasync) - Sync cookies with server
   - [`.middleware()`](#middleware) - Handle to manually register Cookie's middleware
+- [Examples](#examples)
+  - [Alternative Usage](#alternative-usage)
+- [Tests](#running-tests)
+- [Support This Package](#support-our-open-source-contributions)
 
 ## Install:
 
@@ -81,6 +86,13 @@ const cookies = new Cookies({
 __Anywhere__. Read a cookie. If the cookie doesn't exist a `null` will be returned.
 
 - `key` {*String*} - The name of the cookie to read
+
+```js
+const cookieValue = cookies.get(key);
+const cookieValue = cookies.get('age'); // null
+cookies.set('age', 25); // true
+const cookieValue = cookies.get('age'); // 25
+```
 
 ### set
 
