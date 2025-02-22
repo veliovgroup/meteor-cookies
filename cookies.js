@@ -52,6 +52,16 @@ const customEscape = (str) => {
   });
 };
 
+const customUnescape = (str) => {
+  return String(str).replace(/(%u[0-9A-Fa-f]{4})|(%[0-9A-Fa-f]{2})/g, (match) => {
+    if (match.startsWith('%u')) {
+      return String.fromCharCode(parseInt(match.slice(2), 16));
+    }
+
+    return String.fromCharCode(parseInt(match.slice(1), 16));
+  });
+};
+
 /**
  * @url https://github.com/jshttp/cookie/blob/master/index.js
  * @name cookie
