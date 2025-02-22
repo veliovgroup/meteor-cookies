@@ -23,7 +23,7 @@ for (let i = 0; i < _helpers.length; i++) {
 const antiCircular = (_obj) => {
   const object = helpers.clone(_obj);
   const cache  = new Map();
-  return JSON.parse(JSON.stringify(object, (key, value) => {
+  return JSON.parse(JSON.stringify(object, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
       if (cache.get(value)) {
         return void 0;
@@ -213,10 +213,29 @@ if (Meteor.isClient) {
   });
 
   Tinytest.addAsync('cookies: send(callback) - empty', (test, next) => {
-    cookies.send(() => {
-      test.isTrue(true);
+    cookies.send((error, response) => {
+      if (error) {
+        test.fail('sendAsync failed with error: ' + error);
+      } else {
+        // Verify that the response is a valid fetch Response object.
+        test.isTrue(response.ok, 'Expected response.ok to be true');
+        test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
+      }
       next();
     });
+  });
+
+  Tinytest.addAsync('cookies: sendAsync - default', async (test, next) => {
+    try {
+      const response = await cookies.sendAsync();
+      // Verify that the response is a valid fetch Response object.
+      test.isTrue(response.ok, 'Expected response.ok to be true');
+      test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
+      next();
+    } catch (error) {
+      test.fail('sendAsync failed with error: ' + error);
+      next();
+    }
   });
 
   Tinytest.add('Server test - see in console', () => {});
@@ -227,8 +246,14 @@ if (Meteor.isClient) {
   });
 
   Tinytest.addAsync('cookies: send(callback) - default', (test, next) => {
-    cookies.send(() => {
-      test.isTrue(true);
+    cookies.send((error, response) => {
+      if (error) {
+        test.fail('sendAsync failed with error: ' + error);
+      } else {
+        // Verify that the response is a valid fetch Response object.
+        test.isTrue(response.ok, 'Expected response.ok to be true');
+        test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
+      }
       next();
     });
   });
