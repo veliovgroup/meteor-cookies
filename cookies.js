@@ -166,9 +166,9 @@ const parse = (str, options) => {
     if (eqIndx < 0) {
       return;
     }
-    key = pair.substr(0, eqIndx).trim();
+    key = pair.slice(0, eqIndx).trim();
     key = tryDecode(customUnescape(key), (opt.decode || decode));
-    val = pair.substr(++eqIndx, pair.length).trim();
+    val = pair.slice(++eqIndx).trim();
     if (val[0] === '"') {
       val = val.slice(1, -1);
     }
