@@ -112,7 +112,8 @@ const customUnescape = (str) => {
  */
 const decode = decodeURIComponent;
 const encode = encodeURIComponent;
-const pairSplitRegExp = /; */;
+const cookieSplitRegExp = /; */;
+const setCookieSplitRegExp = /, */;
 
 /**
  * RegExp to match field-content in RFC 7230 sec 3.2
@@ -143,7 +144,7 @@ const tryDecode = (str, d) => {
  * @function
  * @name parse
  * @param {string} str
- * @param { decode: function } [options]
+ * @param { setCookie: boolean, decode: function } [options]
  * @returns {[key: string]: unknown}
  * @summary
  * Parse a cookie header.
@@ -156,22 +157,29 @@ const parse = (str, options) => {
     throw new Meteor.Error(404, 'argument str must be a string');
   }
   const obj = {};
-  const opt = options || {};
+  const opt = options || { setCookie: false };
   let val;
   let key;
   let eqIndx;
 
-  str.split(pairSplitRegExp).forEach((pair) => {
+  str.split(opt.setCookie ? setCookieSplitRegExp : cookieSplitRegExp).forEach((_pair) => {
+    let pair = _pair;
+    if (opt.setCookie) {
+      pair = pair.split(cookieSplitRegExp)[0];
+    }
+
     eqIndx = pair.indexOf('=');
     if (eqIndx < 0) {
       return;
     }
+
     key = pair.slice(0, eqIndx).trim();
     key = tryDecode(customUnescape(key), (opt.decode || decode));
     val = pair.slice(++eqIndx).trim();
     if (val[0] === '"') {
       val = val.slice(1, -1);
     }
+
     if (void 0 === obj[key]) {
       obj[key] = tryDecode(val, (opt.decode || decode));
     }
@@ -327,6 +335,7 @@ const deserialize = (string) => {
  * @param {object|string} opts._cookies - Current cookies as String or Object
  * @param {number|boolean} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
  * @param {boolean} opts.runOnServer - Expose Cookies class to Server
+ * @param {boolean} opts.setCookie - Set to `true` when `_cookies` option derivative of `Set-Cookie` header
  * @param {http.ServerResponse|object} opts.response - This object is created internally by a HTTP server
  * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
@@ -340,6 +349,7 @@ class CookiesCore {
     this.__pendingCookies = [];
     this.TTL = opts.TTL || false;
     this.response = opts.response || false;
+    this.setCookie = opts.setCookie || false;
     this.runOnServer = opts.runOnServer || false;
     this.allowQueryStringCookies = opts.allowQueryStringCookies || false;
     this.allowedCordovaOrigins = opts.allowedCordovaOrigins || false;
@@ -353,7 +363,7 @@ class CookiesCore {
     if (helpers.isObject(opts._cookies)) {
       this.cookies = opts._cookies;
     } else {
-      this.cookies = parse(opts._cookies);
+      this.cookies = parse(opts._cookies, { setCookie: opts.setCookie });
     }
   }
 

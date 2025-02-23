@@ -55,6 +55,10 @@ declare module 'meteor/ostrio:cookies' {
      */
     _cookies: string | CookieDict;
     /**
+     * Set to `true` when `_cookies` option derivative of `Set-Cookie` header
+     */
+    setCookie?: boolean;
+    /**
      * Default cookies expiration time (max-age) in milliseconds.
      * If false, the cookie lasts for the session.
      */
