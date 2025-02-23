@@ -54,15 +54,12 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 ## FAQ
 
-- **Cordova Compatible?** This recommendation applies only to outgoing cookies from *Client → Server*. Cookies set by the server work out-of-the-box on the client:
+- **Cordova Usage**: This recommendation applies only to outgoing cookies from *Client → Server*. Cookies set by the server work out-of-the-box on the client:
   - Enable [withCredentials](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials)
   - Set `{ allowQueryStringCookies: true }` and `{ allowedCordovaOrigins: true }` on both *Client* and *Server*
   - When enabled, cookies are transferred to the server via a query string (GET parameters)
   - For security, this is allowed only when the `Origin` header matches the regular expression `^http://localhost:12[0-9]{3}$` (Meteor/Cordova connects through `localhost:12XXX`)
-
 - **Cookies Missing on Server?** In most cases, this is due to Meteor's HTTP callback-chain ordering. Ensure that `new Cookies()` is called **before** routes are registered:
-  - *Tip:* Place the `ostrio:cookies` package above all community packages in your `.meteor/packages` file
-
 - **Meteor-Desktop Compatibility:** `ostrio:cookies` can be used in [`meteor-desktop`](https://github.com/Meteor-Community-Packages/meteor-desktop) projects. Since Meteor-Desktop works similarly to Cordova, all Cordova recommendations from above apply
 
 ## API
@@ -73,8 +70,13 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 See [FAQ](#faq) for more tips
 
+> [!TIP]
+> **On the Server**: cookies are implemented as middleware that attaches a `CookiesCore` instance to the incoming request (accessible as `req.Cookies`). Ensure that the Cookies middleware is registered before other middleware and routes
+> 
+> **In `.meteor/packages`**: Place the `ostrio:cookies` package above all community packages, order of packages does matter in this file
+
 > [!IMPORTANT]
-> **On the Server**, cookies are implemented as middleware that attaches a `Cookies` instance to the incoming request (accessible as `req.Cookies`). Ensure that the Cookies middleware is registered before other middleware and routes
+> **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method. **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All consequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
 
 ### `new Cookies()` Constructor
 
@@ -249,9 +251,22 @@ const cookies = new Cookies({
 WebApp.connectHandlers.use(cookies.middleware());
 ```
 
+---
+
+### `.destroy()`
+
+*(Server only)* Unregisters hooks, callbacks, and middleware
+
+```js
+cookies.isDestroyed // false
+cookies.destroy(); // true
+cookies.isDestroyed // true
+cookies.destroy(); // false — returns `false` as instance was already destroyed
+```
+
 ## Examples
 
-Use `new Cookies()` on *Client*, *Server*, or both separately or in the same file
+Use `new Cookies()` on *Client* and *Server* separately or in the same file
 
 ### Example: Client Usage
 

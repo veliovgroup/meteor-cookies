@@ -11,8 +11,8 @@ if (Meteor.isServer) {
 
 const NoOp  = () => {};
 const urlRE = /\/___cookie___\/set/;
-const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__.ROOT_URL || window.__meteor_runtime_config__.meteorEnv.ROOT_URL || false);
-const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__.MOBILE_ROOT_URL || window.__meteor_runtime_config__.meteorEnv.MOBILE_ROOT_URL || false);
+const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__?.ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.ROOT_URL || false);
+const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__?.MOBILE_ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.MOBILE_ROOT_URL || false);
 
 const helpers = {
   isUndefined(obj) {
@@ -188,7 +188,7 @@ const parse = (str, options) => {
  */
 const antiCircular = (_obj) => {
   const object = helpers.clone(_obj);
-  const cache  = new Map();
+  const cache = new Map();
   return JSON.stringify(object, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
       if (cache.get(value)) {
@@ -207,7 +207,7 @@ const antiCircular = (_obj) => {
  * @param {string} name
  * @param {string} val
  * @param {object} [options]
- * @returns { cookieString: String, sanitizedValue: Mixed }
+ * @returns { cookieString: string, sanitizedValue: unknown }
  * @summary
  * Serialize data into a cookie header.
  * Serialize the a name value pair into a cookie string suitable for
@@ -334,6 +334,9 @@ const deserialize = (string) => {
  */
 class CookiesCore {
   constructor(opts) {
+    this.NAME = 'COOKIES_CORE';
+    this.id = Symbol(this.NAME);
+
     this.__pendingCookies = [];
     this.TTL = opts.TTL || false;
     this.response = opts.response || false;
@@ -437,13 +440,16 @@ class CookiesCore {
         this.response.setHeader('Set-Cookie', cookieString);
       }
       return true;
-    } else if (!key && this.keys().length > 0 && this.keys()[0] !== '') {
+    }
+
+    if (!key && this.keys().length > 0 && this.keys()[0] !== '') {
       const keys = Object.keys(this.cookies);
       for (let i = 0; i < keys.length; i++) {
         this.remove(keys[i]);
       }
       return true;
     }
+
     return false;
   }
 
@@ -489,7 +495,7 @@ class CookiesCore {
    */
   send(cb = NoOp) {
     if (Meteor.isServer) {
-      cb(new Meteor.Error(400, 'Can\'t run `.send()` on server, it\'s Client only method!'));
+      cb(new Meteor.Error(400, 'Client only: `.send()` cannot be used on the Server'));
     }
 
     if (this.runOnServer) {
@@ -517,7 +523,7 @@ class CookiesCore {
    */
   async sendAsync() {
     if (Meteor.isServer) {
-      throw new Meteor.Error(400, 'Can\'t run `.sendAsync()` on server, it\'s Client only method!');
+      throw new Meteor.Error(400, 'Client only: `.sendAsync()` cannot be used on the Server');
     }
 
     if (!this.runOnServer) {
@@ -538,9 +544,10 @@ class CookiesCore {
    * @name __prepareSendData
    * @summary Prepare `path` and `query` for `.send()` and `.sendAsync()` methods
    * @returns { path: string, query: string }
+   * @private
    */
   __prepareSendData() {
-    let path = `${window.__meteor_runtime_config__.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__.meteorEnv.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
+    let path = `${window.__meteor_runtime_config__?.ROOT_URL_PATH_PREFIX || window.__meteor_runtime_config__?.meteorEnv?.ROOT_URL_PATH_PREFIX || ''}/___cookie___/set`;
     let query = '';
 
     if ((Meteor.isCordova || Meteor.isDesktop) && this.allowQueryStringCookies) {
@@ -565,36 +572,6 @@ class CookiesCore {
 }
 
 /**
- * @function
- * @locus Server
- * @summary Middleware handler
- * @param {IncomingMessage} request
- * @param {ServerResponse} response
- * @param { runOnServer: boolean, allowQueryStringCookies: boolean, TTL: number|boolean } opts
- * @returns {CookiesCore}
- * @throws {Meteor.Error}
- * @private
- */
-const __middlewareHandler = (request, response, opts) => {
-  let _cookies = {};
-  if (!opts.runOnServer) {
-    throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
-  }
-
-  if (request.headers && request.headers.cookie) {
-    _cookies = parse(request.headers.cookie);
-  }
-
-  return new CookiesCore({
-    _cookies,
-    TTL: opts.TTL,
-    runOnServer: opts.runOnServer,
-    response,
-    allowQueryStringCookies: opts.allowQueryStringCookies
-  });
-};
-
-/**
  * @locus Anywhere
  * @class Cookies
  * @extends CookiesCore
@@ -606,9 +583,60 @@ const __middlewareHandler = (request, response, opts) => {
  * @param {boolean} opts.runOnServer - Expose Cookies class to Server
  * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
- * @summary Main Cookies class
+ * @summary Main Cookies class; Private methods have `__` prefix
  */
 class Cookies extends CookiesCore {
+  /**
+   * @summary __handlers - Map with all registered `handler` callbacks
+   * @type {Map<string, function(cookies: CookiesCore): void>}
+   * @static
+   */
+  static __handlers = new Map();
+
+  /**
+   * @summary __hooks - Map with all registered `onCookies` hooks
+   * @type {Map<string, function(req: IncomingMessage, res: ServerResponse, next: function(): void): void>}
+   * @static
+   */
+  static __hooks = new Map();
+
+  /**
+   * @summary isMiddlewareRegistered - Check if at least single global middleware was registered
+   * @type {boolean}
+   * @static
+   */
+  static isMiddlewareRegistered = false;
+
+  /**
+   * @function
+   * @locus Server
+   * @summary Creates new CookiesCore instance
+   * @param {IncomingMessage} request
+   * @param {ServerResponse} response
+   * @param { runOnServer: boolean, allowQueryStringCookies: boolean, TTL: number|boolean } opts
+   * @returns {CookiesCore}
+   * @throws {Meteor.Error}
+   * @static
+   */
+  static __getCookiesCore = (request, response, opts) => {
+    let _cookies = {};
+    if (!opts.runOnServer) {
+      throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
+    }
+
+    if (request.headers && request.headers.cookie) {
+      _cookies = parse(request.headers.cookie);
+    }
+
+    return new CookiesCore({
+      _cookies,
+      TTL: opts.TTL,
+      runOnServer: opts.runOnServer,
+      response,
+      allowQueryStringCookies: opts.allowQueryStringCookies
+    });
+  };
+
   constructor(opts = {}) {
     opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
@@ -622,14 +650,33 @@ class Cookies extends CookiesCore {
       super(opts);
       opts.auto = (opts.auto !== false) ? true : false;
       this.opts = opts;
-      this.handler = helpers.isFunction(opts.handler) ? opts.handler : false;
-      this.onCookies = helpers.isFunction(opts.onCookies) ? opts.onCookies : false;
+      this.isDestroyed = false;
+      this.hasMiddleware = false;
 
-      if (opts.runOnServer && !Cookies.isLoadedOnServer) {
-        Cookies.isLoadedOnServer = true;
-        if (opts.auto) {
-          WebApp.connectHandlers.use(this.__autoMiddleware.bind(this));
+      if (helpers.isFunction(opts.onCookies)) {
+        // `onCokies` HOOK REQUIRES AT LEAST ONE REGISTERED MIDDLEWARE
+        // PREVIOUSLY REGISTERED MIDDLEWARES ARE CHECKED VIA Cookies.isMiddlewareRegistered
+        // AND IF `opts.auto: true` WE KNOW THAT NEW MIDDLEWARE WILL BE REGISTERED
+        if ((!opts.auto && !Cookies.isMiddlewareRegistered)) {
+          Meteor._debug('[ostrio:cookies] [WARNING] {onCookies} has no effect when {auto: false}. `onCookies` hook would not run!');
+        } else {
+          Cookies.__hooks.set(this.id, opts.onCookies);
         }
+      }
+
+      if (helpers.isFunction(opts.handler)) {
+        Cookies.__handlers.set(this.id, opts.handler);
+      }
+
+      // IF `new Cookies()` CALLED MULTIPLE TIMES ON THE SERVER
+      // WE LIMIT REGISTERED MIDDLEWARES TO 1
+      // IF ORIGINAL Cookies INSTANCE HAS CALLED .destroy()
+      // WE ALLOW NEW MIDDLEWARE REGISTRATIONS BY FLAGGING
+      // Cookies.isMiddlewareRegistered AS false
+      if (opts.runOnServer && opts.auto && !Cookies.isMiddlewareRegistered) {
+        this.hasMiddleware = true;
+        Cookies.isMiddlewareRegistered = true;
+        WebApp.connectHandlers.use(this.__autoMiddleware.bind(this));
       }
     }
   }
@@ -644,13 +691,103 @@ class Cookies extends CookiesCore {
    */
   middleware() {
     if (!Meteor.isServer) {
-      throw new Meteor.Error(500, '[ostrio:cookies] Can\'t use `.middleware()` on Client, it\'s Server only!');
+      throw new Meteor.Error(500, 'Server only: `.middleware()` cannot be used on the Client');
     }
 
-    return (req, res, next) => {
-      helpers.isFunction(this.handler) && this.handler(__middlewareHandler(req, res, this.opts));
+    if (Cookies.isMiddlewareRegistered) {
+      Meteor._debug('[ostrio:cookies] [WARNING] Middleware already registered! All consequent middleware registration will have no effect as it will execute same logic and call the same hooks/callbacks');
+      return this.__blankMiddleware.bind(this);
+    }
+
+    this.hasMiddleware = true;
+    Cookies.isMiddlewareRegistered = true;
+
+    return async (req, res, next) => {
+      if (this.isDestroyed) {
+        next();
+        return;
+      }
+
+      req.Cookies = Cookies.__getCookiesCore(req, res, this.opts);
+      await this.__execute(req, res, Cookies.__handlers);
       next();
     };
+  }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @name Destroy
+   * @summary Unregister hooks, callbacks, and middleware
+   * @throws {Meteor.Error}
+   * @returns {boolean}
+   */
+  destroy() {
+    if (!Meteor.isServer) {
+      throw new Meteor.Error(500, 'Server only: `.destroy()` cannot be used on the Client');
+    }
+
+    if (this.isDestroyed) {
+      return false;
+    }
+
+    if (this.hasMiddleware) {
+      Cookies.isMiddlewareRegistered = false;
+    }
+
+    this.isDestroyed = true;
+    Cookies.__hooks.delete(this.id);
+    Cookies.__handlers.delete(this.id);
+    this.opts = null;
+    this.response = null;
+    this.cookies = null;
+    this.__pendingCookies = null;
+    return true;
+  }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @name __execute
+   * @param {IncomingMessage} req
+   * @param {ServerResponse} res
+   * @param {Map} map
+   * @summary Execute globally registered handlers or hooks
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  async __execute(req, res, map) {
+    let cookiesCore = req.Cookies;
+    if (map.size) {
+      if (!cookiesCore) {
+        cookiesCore = Cookies.__getCookiesCore(req, res, this.opts);
+      }
+
+      for (const [_id, handler] of map) {
+        try {
+          await handler(cookiesCore);
+        } catch (error) {
+          Meteor._debug('[ostrio:cookies] Error in `handler` or `onCookies` hook', _id, error);
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @name __blankMiddleware
+   * @param {IncomingMessage} _req
+   * @param {ServerResponse} _res
+   * @param {NextFunction} next
+   * @summary Blank middleware that instantly calls NextFunction;
+   * @returns {void}
+   * @private
+   */
+  __blankMiddleware(_req, _res, next) {
+    next();
   }
 
   /**
@@ -661,9 +798,15 @@ class Cookies extends CookiesCore {
    * @param {ServerResponse} res
    * @param {NextFunction} next
    * @summary Default middleware that used when `{auto: true}` (default option)
-   * @returns {void}
+   * @returns {Promise<void>}
+   * @private
    */
-  __autoMiddleware(req, res, next) {
+  async __autoMiddleware(req, res, next) {
+    if (this.isDestroyed) {
+      next();
+      return;
+    }
+
     if (urlRE.test(req._parsedUrl.path)) {
       const matchedCordovaOrigin = !!req.headers.origin
         && this.allowedCordovaOrigins
@@ -698,21 +841,16 @@ class Cookies extends CookiesCore {
         }
       }
 
-      helpers.isFunction(this.onCookies) && this.onCookies(__middlewareHandler(req, res, this.opts));
-
+      await this.__execute(req, res, Cookies.__hooks);
       res.writeHead(200);
       res.end('');
     } else {
-      req.Cookies = __middlewareHandler(req, res, this.opts);
-      helpers.isFunction(this.handler) && this.handler(req.Cookies);
+      req.Cookies = Cookies.__getCookiesCore(req, res, this.opts);
+      await this.__execute(req, res, Cookies.__handlers);
       next();
     }
   }
 }
 
-if (Meteor.isServer) {
-  Cookies.isLoadedOnServer = false;
-}
-
-/* Export the Cookies class */
+/* Export the Cookies and CookiesCore classes */
 export { Cookies, CookiesCore };
