@@ -66,17 +66,21 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 > [!NOTE]
 > On the server, cookies are set only after headers are sent (i.e. on the next route or page reload)
+> 
 > To sync cookies from *Client* to *Server* without a page reload, use `sendAsync()` or `send()`
 
-See [FAQ](#faq) for more tips
 
 > [!TIP]
 > **On the Server**: cookies are implemented as middleware that attaches a `CookiesCore` instance to the incoming request (accessible as `req.Cookies`). Ensure that the Cookies middleware is registered before other middleware and routes
 > 
 > **In `.meteor/packages`**: Place the `ostrio:cookies` package above all community packages, order of packages does matter in this file
 
+See [FAQ](#faq) for more tips
+
 > [!IMPORTANT]
-> **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method. **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All consequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
+> **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method. 
+> 
+> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All consequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
 
 ### `new Cookies()` Constructor
 
