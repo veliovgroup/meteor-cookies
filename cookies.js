@@ -34,7 +34,11 @@ const helpers = {
     return Object.prototype.toString.call(obj) === '[object Object]';
   },
   isFunction(obj) {
-    return Object.prototype.toString.call(obj) === '[object Function]';
+    if (this.isUndefined(obj)) {
+      return false;
+    }
+    const type = Object.prototype.toString.call(obj);
+    return type === '[object Function]' || type === '[object AsyncFunction]';
   },
 };
 
@@ -196,7 +200,7 @@ const parse = (str, options) => {
  */
 const antiCircular = (_obj) => {
   const object = helpers.clone(_obj);
-  const cache = new Map();
+  const cache = new WeakMap();
   return JSON.stringify(object, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
       if (cache.get(value)) {
