@@ -37,6 +37,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 - [Examples](#examples)
   - [Client Usage](#example-client-usage)
   - [Server Usage](#example-server-usage)
+  - [Server with multiple cookie handlers](#example-server-with-multiple-cookie-handlers)
   - [Alternative Usage](#example-alternative-usage)
 - [Running Tests](#running-tests)
 - [Support Our Open Source Contributions](#support-our-open-source-contributions)
@@ -385,7 +386,7 @@ WebApp.connectHandlers.use((req, res, next) => {
 });
 ```
 
-### Example: Server with multiple server handlers
+### Example: Server with multiple cookie handlers
 
 Sometimes it is required to build temporary or separate logic based on Client's cookies. And to split logic between different modules and files
 
