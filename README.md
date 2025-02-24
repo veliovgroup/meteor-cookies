@@ -33,6 +33,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
   - [`.send()`](#send) – Sync cookies with the server
   - [`.sendAsync()`](#sendasync) – Sync cookies asynchronously
   - [`.middleware()`](#middleware) – Register cookie middleware manually
+  - [`new CookieCore()` constructor](#new-cookiescore-constructor) – Low-level class that can be used to directly parse and manage cookies
 - [Examples](#examples)
   - [Client Usage](#example-client-usage)
   - [Server Usage](#example-server-usage)
@@ -112,7 +113,7 @@ const cookies = new Cookies({
 
 ---
 
-### `.get()`
+#### `.get()`
 
 *(Anywhere)* Read a cookie. Returns `undefined` if the cookie is not found
 
@@ -128,7 +129,7 @@ cookies.get('age'); // returns 25
 
 ---
 
-### `.set()`
+#### `.set()`
 
 *(Anywhere)* Create or update a cookie
 
@@ -158,7 +159,7 @@ cookies.set('age', 25, {
 
 ---
 
-### `.remove()`
+#### `.remove()`
 
 *(Anywhere)* Remove cookie(s)
 
@@ -180,7 +181,7 @@ const isRemoved = cookies.remove(key, '/', 'example.com'); // boolean
 
 ---
 
-### `.has()`
+#### `.has()`
 
 *(Anywhere)* Check if a cookie exists
 
@@ -195,7 +196,7 @@ const hasKey = cookies.has('age'); // boolean
 
 ---
 
-### `.keys()`
+#### `.keys()`
 
 *(Anywhere)* Returns an array of all cookie names
 
@@ -205,7 +206,7 @@ const cookieKeys = cookies.keys(); // string[] (e.g., ['locale', 'country', 'gen
 
 ---
 
-### `.send()`
+#### `.send()`
 
 *(Client only)* Synchronously send all current cookies to the server via XHR
 
@@ -225,7 +226,7 @@ cookies.send((error, response) => {
 
 ---
 
-### `.sendAsync()`
+#### `.sendAsync()`
 
 *(Client only)* Asynchronously send all current cookies to the server via XHR
 
@@ -236,7 +237,7 @@ console.log('Cookies synced:', response);
 
 ---
 
-### `.middleware()`
+#### `.middleware()`
 
 *(Server only)* Returns a middleware function to integrate cookies into your server’s request pipeline.
 **Usage:** Register this middleware with your Meteor server (e.g., via `WebApp.connectHandlers.use`).
@@ -257,7 +258,7 @@ WebApp.connectHandlers.use(cookies.middleware());
 
 ---
 
-### `.destroy()`
+#### `.destroy()`
 
 *(Server only)* Unregisters hooks, callbacks, and middleware
 
@@ -266,6 +267,79 @@ cookies.isDestroyed // false
 cookies.destroy(); // true
 cookies.isDestroyed // true
 cookies.destroy(); // false — returns `false` as instance was already destroyed
+```
+
+---
+
+### `new CookiesCore()` constructor
+
+`CookiesCore` is low-level constructor that can be used to directly parse and manage cookies
+
+**Arguments:**
+
+- `opts` {*CookiesCoreOptions*} – Optional settings
+
+**Supported CookiesCoreOptions:**
+
+- `_cookies` {*string | CookieDict*} - Cookies string from `document.cookie`, `Set-Cookie` header, or `{ [key: string]: unknown }` Object
+- `setCookie` {*boolean*} - Set to `true` when `_cookies` option derivative of `Set-Cookie` header
+- `response` {*ServerResponse*} - HTTP server response object
+- `TTL` {*number | false*} - Default cookies expiration time (max-age) in milliseconds. If false, the cookie lasts for the session
+- `runOnServer` {*boolean*} - Client only. If `true` — enables `send` and `sendAsync` from client
+- `allowQueryStringCookies` {*boolean*} - If true, allow passing cookies via query string (used primarily in Cordova)
+- `allowedCordovaOrigins` {*RegExp | boolean*} - A regular expression or boolean to allow cookies from specific origins
+
+> [!NOTE]
+> `CookiesCore` instance has the same methods as `Cookies` class except `.destroy()` and `.middleware()`
+
+```js
+import { CookiesCore } from 'meteor/ostrio:cookies';
+
+if (Meteor.isServer) {
+  // EXAMPLE SERVER USAGE
+  WebApp.connectHandlers.use((request, response, next) => {
+    const headerCookies = response.headers.get('set-cookie');
+    const cookies = new CookiesCore({
+      _cookies: headerCookies,
+      setCookie: true, // <- Switch cookie-parser to header mode
+      response: response,
+    });
+
+    // FOR EXAMPLE: CHECK SESSION EXPIRATION
+    if (cookies.has('session-exp')) {
+      if (cookies.get('session-exp') < Date.now()) {
+        // .remove() WILL ADD `Set-Cookie` HEADER WITH expires=0 OPTION
+        cookies.remove('session-id');
+        cookies.remove('session-exp');
+      }
+    } else {
+      // MARK USER AS NEW
+      cookies.set('session-type', 'new-user');
+    }
+  });
+}
+
+if (Meteor.isClient) {
+  const cookies = new CookiesCore({
+    // {runOnServer: true} Enables syncing cookies between client and server
+    // Requires `new Cookies({auto: true})` on server
+    runOnServer: true,
+    _cookies: { // <- Set default cookies
+      key: 'name',
+      theme: 'dark',
+      isNew: true,
+      'agreed-with-gdpr': false,
+    }
+  });
+
+  // SET OR CHANGE COOKIES IN RUNTIME
+  cookies.set('ab-test', 42);
+  cookies.set('isNew', false);
+  cookies.set('agreed-with-gdpr', true);
+
+  // SYNC COOKIES
+  await cookies.sendAsync();
+}
 ```
 
 ## Examples
@@ -309,6 +383,58 @@ WebApp.connectHandlers.use((req, res, next) => {
   console.log(cookiesInstance.get('gender')); // "male"
   next();
 });
+```
+
+### Example: Server with multiple server handlers
+
+Sometimes it is required to build temporary or separate logic based on Client's cookies. And to split logic between different modules and files
+
+```js
+import { Meteor } from 'meteor/meteor';
+import { Cookies } from 'meteor/ostrio:cookies';
+
+// register default middleware that will handle requests and req.Cookies extension
+const globalCookies = new Cookies();
+
+// In checkout module/file
+WebApp.connectHandlers.use((req, res, next) => {
+  if (req.Cookies.has('checkout-session')) {
+    const sessionId = req.Cookies.get('checkout-session');
+    // CHECK IF CHECKOUT SESSION IS VALID
+    if (isCheoutSessionValid(sessionId)) {
+      // FORCE-REDIRECT USER TO CHECKOUT IF SESSION IS VALID
+      res.statusCode = 302;
+      res.setHeader('Location', `https://example.com?chsessid=${sessionId}`);
+      res.end();
+      return;
+    }
+
+    // REMOVE CHECKOUT COOKIE IF NOT VALID OR EXPIRED
+    req.Cookies.remove('checkout-session');
+  }
+
+  next();
+});
+
+// In session module/file
+const sessionCookies = new Cookies({
+  auto: false,
+  async handler(cookies) {
+    // FOR EXAMPLE: CHECK SESSION EXPIRATION
+    if (cookies.has('session-exp')) {
+      if (cookies.get('session-exp') < Date.now()) {
+        // .remove() WILL ADD `Set-Cookie` HEADER WITH expires=0 OPTION
+        cookies.remove('session-id');
+        cookies.remove('session-exp');
+      }
+    } else {
+      // MARK USER AS NEW
+      cookies.set('session-type', 'new-user');
+    }
+  }
+});
+// unregister handler when it isn't needed
+sessionCookies.destroy();
 ```
 
 ### Example: Alternative Usage
