@@ -6,7 +6,8 @@
 .meteor
 .npm
 .versions
-cookies-tests.js
 node_modules
 npm-debug.log*
 package.js
+tests
+tests/*

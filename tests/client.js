@@ -1,36 +1,48 @@
 import { Cookies } from 'meteor/ostrio:cookies';
+import { antiCircular, isArray, isObject } from '../helpers';
 
-const helpers = {
-  isArray(obj) {
-    return Array.isArray(obj);
-  },
-  clone(obj) {
-    if (!this.isObject(obj)) return obj;
-    return this.isArray(obj) ? obj.slice() : Object.assign({}, obj);
-  }
-};
+const circularObj = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
+circularObj.slef = circularObj;
 
-const _helpers = ['Number', 'Object', 'Function'];
-for (let i = 0; i < _helpers.length; i++) {
-  helpers['is' + _helpers[i]] = function (obj) {
-    return Object.prototype.toString.call(obj) === '[object ' + _helpers[i] + ']';
-  };
-}
+const circularArr = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']];
+circularArr.push(circularArr);
+circularArr.push(circularObj);
 
 
-const antiCircular = (_obj) => {
-  const object = helpers.clone(_obj);
-  const cache  = new WeakMap();
-  return JSON.parse(JSON.stringify(object, (_key, value) => {
-    if (typeof value === 'object' && value !== null) {
-      if (cache.get(value)) {
-        return void 0;
-      }
-      cache.set(value, true);
-    }
-    return value;
-  }));
-};
+const testKeyVals = [{
+  key: '⦁',
+  value: '⦶'
+}, {
+  key: '小飼弾',
+  value: '小飼弾\n小飼弾'
+}, {
+  key: 'фывфыв',
+  value: 'йцукен\nнекуцй'
+}, {
+  key: 'device undefined',
+  value: 'Device undefined ('
+}, {
+  key: 'testFalse',
+  value: false
+}, {
+  key: 'testTrue',
+  value: true
+}, {
+  key: 'testNull',
+  value: null
+}, {
+  key: 'testObject',
+  value: {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}}
+}, {
+  key: 'testObjectCircular',
+  value: circularObj
+}, {
+  key: 'testArray',
+  value: [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']]
+}, {
+  key: 'testArrayCircular',
+  value: circularArr
+}];
 
 const cookies = new Cookies();
 
@@ -50,105 +62,20 @@ Tinytest.add('cookies: set() / get() - String', test => {
   test.equal(cookies.get('testCookie'), testVal, 'js');
 });
 
-Tinytest.add('cookies: set() / get() / has() - Unicode', function (test) {
-  const testVal = '⦶';
-  const setRes = cookies.set('⦁', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('⦁'));
-  test.isFalse(cookies.has('⦁⦁⦁'));
-  test.equal(cookies.get('⦁', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('⦁'), testVal, 'js');
-});
+Tinytest.add('cookies: set() / get() / has() - various values', function (test) {
+  for (let i = testKeyVals.length - 1; i >= 0; i--) {
+    const { key, value } = testKeyVals[i];
+    const setRes = cookies.set(key, value);
+    test.isTrue(setRes, true, `Set cookie with key ${key}`);
+    test.isTrue(cookies.has(key), `cookies.has(${key})`);
+    test.isFalse(cookies.has(`${key}${key}${key}`), `NO cookie.has(${key}${key}${key})`);
 
-Tinytest.add('cookies: set() / get() / has() - Unicode 2', function (test) {
-  const testVal = '小飼弾\n小飼弾';
-  const setRes = cookies.set('小飼弾', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('小飼弾'));
-  test.equal(cookies.get('小飼弾', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('小飼弾'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() / has() - Cyrillic', function (test) {
-  const testVal = 'йцукен\nнекуцй';
-  const setRes = cookies.set('фывфыв', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('фывфыв'));
-  test.equal(cookies.get('фывфыв', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('фывфыв'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() / has() - "Device undefined ("', function (test) {
-  const testVal = 'Device undefined (';
-  const testKey = 'device undefined';
-  const setRes = cookies.set(testKey, testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has(testKey));
-  test.equal(cookies.get(testKey, document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get(testKey), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() / has() - FALSE', test => {
-  const testVal = false;
-  const setRes = cookies.set('testFalse', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('testFalse'));
-  test.equal(cookies.get('testFalse', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('testFalse'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() / has() - TRUE', test => {
-  const testVal = true;
-  const setRes = cookies.set('testTrue', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('testTrue'));
-  test.equal(cookies.get('testTrue', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('testTrue'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() / has() - NULL', test => {
-  const testVal = null;
-  const setRes = cookies.set('testNull', testVal);
-  test.isTrue(setRes);
-  test.isTrue(cookies.has('testNull'));
-  test.equal(cookies.get('testNull', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('testNull'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() - Object', test => {
-  const testVal = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
-  const setRes = cookies.set('testObject', testVal);
-  test.isTrue(setRes);
-  test.equal(cookies.get('testObject', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('testObject'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() - Object Circle', test => {
-  const testVal = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
-  testVal.slef = testVal;
-  const setRes = cookies.set('testObject', testVal);
-  test.isTrue(setRes);
-  const _testVal = antiCircular(Object.assign({}, testVal));
-  test.equal(cookies.get('testObject', document.cookie), _testVal, 'document.cookie');
-  test.equal(cookies.get('testObject'), _testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() - Array', test => {
-  const testVal = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']];
-  const setRes = cookies.set('testArray', testVal);
-  test.isTrue(setRes);
-  test.equal(cookies.get('testArray', document.cookie), testVal, 'document.cookie');
-  test.equal(cookies.get('testArray'), testVal, 'js');
-});
-
-Tinytest.add('cookies: set() / get() - Array Circle', test => {
-  const obj = {asd: 'dsa', arr: [1, 2, 3]};
-  obj.slef = ['a', obj, 'c'];
-  const testVal = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5'], obj];
-  const setRes = cookies.set('testArray', testVal);
-  test.isTrue(setRes);
-  test.equal(cookies.get('testArray', document.cookie), antiCircular(testVal), 'document.cookie');
-  test.equal(cookies.get('testArray'), antiCircular(testVal), 'js');
+    if (isObject(value) || isArray(value)) {
+      test.equal(cookies.get(key), JSON.parse(antiCircular(value)), `cookie.get(${key}) returns correct value`);
+    } else {
+      test.equal(cookies.get(key), value, `cookie.get(${key}) returns correct value`);
+    }
+  }
 });
 
 Tinytest.add('cookies: set() / get() / has() - no key', test => {
@@ -250,6 +177,7 @@ Tinytest.addAsync('cookies: sendAsync - default', async (test) => {
   test.equal(document.cookie, '', 'document.cookie is empty before setting a cookie');
   cookies.set('FORSERVERTESTS-ASYNC', '_form_client_to_server_tests_async_');
   test.include(document.cookie, 'FORSERVERTESTS-ASYNC', 'document.cookie has FORSERVERTESTS-ASYNC after setting cookie');
+
   try {
     const response = await cookies.sendAsync();
     // Verify that the response is a valid fetch Response object.
@@ -268,6 +196,7 @@ Tinytest.addAsync('cookies: sendAsync - remove on server', async (test) => {
   test.equal(document.cookie, '', 'document.cookie is empty before setting a cookie');
   cookies.set('TEST-TO-REMOVE', '_this_cookie_will_be_removed_by_server_');
   test.include(document.cookie, 'TEST-TO-REMOVE', 'document.cookie has TEST-TO-REMOVE after setting cookie');
+
   try {
     const response = await cookies.sendAsync();
     // Verify that the response is a valid fetch Response object.
@@ -285,6 +214,7 @@ Tinytest.addAsync('cookies: sendAsync - add cookie on server', async (test) => {
   test.equal(document.cookie, '', 'document.cookie is empty before setting a cookie');
   cookies.set('TEST-ADD-FROM-SERVER', '_this_cookie_will_be_removed_by_server_');
   test.include(document.cookie, 'TEST-ADD-FROM-SERVER', 'document.cookie has TEST-ADD-FROM-SERVER after setting cookie');
+
   try {
     const response = await cookies.sendAsync();
     // Verify that the response is a valid fetch Response object.

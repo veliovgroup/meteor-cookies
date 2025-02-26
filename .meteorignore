@@ -12,4 +12,5 @@ LICENCE
 LICENSE
 README.md
 meteor.md
-cookies-tests.js
+tests
+tests/*
