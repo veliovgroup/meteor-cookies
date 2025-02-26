@@ -146,22 +146,26 @@ Tinytest.addAsync('Server: {handler + default middleware} callback - sync', (tes
   (async () => {
     const testValue1 = Random.id();
     const testValue2 = Random.id();
+    const testPath = '/middleware/callback/sync';
+    const testUrl = `${ENDPOINT_COOKIES_TEST}${testPath}`;
 
     const cookiesInstance = new Cookies({
       name: test.test_case.name,
       auto: false,
       runOnServer: true,
       handler(cookiesCoreInstance) {
-        test.instanceOf(cookiesCoreInstance, CookiesCore, 'argument in middleware hook is instance of CookiesCore class');
-        test.equal(cookiesCoreInstance.keys(), ['testCookie1', 'testCookie2'], 'has correct .keys() inside "handler" hook');
-        test.equal(cookiesCoreInstance.get('testCookie1'), testValue1, 'Received cookie has correct value 1');
-        test.equal(cookiesCoreInstance.get('testCookie2'), testValue2, 'Received cookie has correct value 2');
+        if (cookiesCoreInstance.response.req.originalUrl.endsWith(testPath)) {
+          test.instanceOf(cookiesCoreInstance, CookiesCore, 'argument in middleware hook is instance of CookiesCore class');
+          test.equal(cookiesCoreInstance.keys(), ['testCookie1', 'testCookie2'], 'has correct .keys() inside "handler" hook');
+          test.equal(cookiesCoreInstance.get('testCookie1'), testValue1, 'Received cookie has correct value 1');
+          test.equal(cookiesCoreInstance.get('testCookie2'), testValue2, 'Received cookie has correct value 2');
+        }
       }
     });
 
     test.equal(Cookies.__handlers.size, 1, 'Cookies.__handlers.size is 1 after new middleware is registered');
 
-    const response = await fetch(ENDPOINT_COOKIES_TEST, {
+    const response = await fetch(testUrl, {
       method: 'GET',
       headers: {
         'Cookie': `testCookie1=${testValue1}; testCookie2=${testValue2};`
@@ -181,25 +185,26 @@ Tinytest.addAsync('Server: {handler + default middleware} callback - async', (te
   (async () => {
     const testValue1 = Random.id();
     const testValue2 = Random.id();
+    const testPath = '/middleware/callback/async';
+    const testUrl = `${ENDPOINT_COOKIES_TEST}${testPath}`;
 
     const cookiesInstance = new Cookies({
       name: test.test_case.name,
       auto: false,
       runOnServer: true,
       async handler(cookiesCoreInstance) {
-        test.instanceOf(cookiesCoreInstance, CookiesCore, 'argument in middleware hook is instance of CookiesCore class');
-        test.equal(cookiesCoreInstance.keys(), ['testCookie1', 'testCookie2'], 'has correct .keys() inside "handler" hook');
-        test.equal(cookiesCoreInstance.get('testCookie1'), testValue1, 'Received cookie has correct value 1');
-        test.equal(cookiesCoreInstance.get('testCookie2'), testValue2, 'Received cookie has correct value 2');
-
-        test.equal(cookiesInstance.destroy(), true, 'cookiesInstance.destroy() returns true when called first time');
-        test.equal(Cookies.__handlers.size, 0, 'Cookies.__handlers.size is 0 after class was .destroy(ed)');
+        if (cookiesCoreInstance.response.req.originalUrl.endsWith(testPath)) {
+          test.instanceOf(cookiesCoreInstance, CookiesCore, 'argument in middleware hook is instance of CookiesCore class');
+          test.equal(cookiesCoreInstance.keys(), ['testCookie1', 'testCookie2'], 'has correct .keys() inside "handler" hook');
+          test.equal(cookiesCoreInstance.get('testCookie1'), testValue1, 'Received cookie has correct value 1');
+          test.equal(cookiesCoreInstance.get('testCookie2'), testValue2, 'Received cookie has correct value 2');
+        }
       }
     });
 
     test.equal(Cookies.__handlers.size, 1, 'Cookies.__handlers.size is 1 after new middleware is registered');
 
-    const response = await fetch(ENDPOINT_COOKIES_TEST, {
+    const response = await fetch(testUrl, {
       method: 'GET',
       headers: {
         'Cookie': `testCookie1=${testValue1}; testCookie2=${testValue2};`
@@ -208,6 +213,9 @@ Tinytest.addAsync('Server: {handler + default middleware} callback - async', (te
 
     test.isTrue(response.ok, 'Expected response.ok to be true');
     test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
+
+    test.equal(cookiesInstance.destroy(), true, 'cookiesInstance.destroy() returns true when called first time');
+    test.equal(Cookies.__handlers.size, 0, 'Cookies.__handlers.size is 0 after class was .destroy(ed)');
     next();
   })();
 });
