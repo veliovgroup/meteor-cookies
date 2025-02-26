@@ -46,10 +46,6 @@ const testKeyVals = [{
   value: circularArr
 }];
 
-if (process.__cachedCookies) {
-  process.__cachedCookies.destroy();
-}
-
 new Cookies({
   name: 'GLOBAL_COOKIE_HANDLER',
   auto: true,
@@ -71,6 +67,50 @@ const ENDPOINT_COOKIES_TEST = Meteor.absoluteUrl(PATH_COOKIES_TEST);
 WebApp.connectHandlers.use('/' + PATH_COOKIES_TEST, (_req, res) => {
   res.statusCode = 200;
   res.end('cookies test endpoint');
+});
+
+Tinytest.addAsync('Server: Invalid cookie header', async (test, next) => {
+  const request = { headers: { cookie: 'invalidCookieWithoutEquals' }, _parsedUrl: { path: '/some/path' } };
+  const res = new (require('stream').PassThrough)();
+  const cookiesInstance = new Cookies({ auto: false, runOnServer: true });
+  try {
+    const coreInstance = cookiesInstance.__getCookiesCore(request, res);
+    test.equal(coreInstance.keys().length, 0, 'Invalid cookie header yields no cookies');
+  } catch (e) {
+    test.fail(e);
+  }
+  cookiesInstance.destroy();
+  next();
+});
+
+Tinytest.addAsync('Server: client methods throws - send', (test, next) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
+  cookiesInstance.send((error, response) => {
+    test.instanceOf(error, Meteor.Error, '.send() returns error on sever');
+    test.include(error.message, 'Client only', 'error.message has "Client only"');
+    test.include(error.reason, 'Client only', 'error.reason has "Client only"');
+    test.equal(error.error, 400, 'error.error is 400');
+    test.isUndefined(response, 'response is undefined');
+    cookiesInstance.destroy();
+    next();
+  });
+});
+
+Tinytest.addAsync('Server: client methods throws - sendAsync', async (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
+  await test.throwsAsync(async () => { await cookiesInstance.sendAsync(); }, /Client only/, 'sendAsync() should throw on Server');
+  cookiesInstance.destroy();
+});
+
+Tinytest.add('Server: Duplicate middleware registration returns blank middleware', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
+  // Since we have global middleware registered — this registration should return blank middleware
+  const middleware2 = cookiesInstance.middleware();
+  // Simulate that blank middleware simply calls next immediately:
+  let nextCalled = false;
+  middleware2({}, {}, () => { nextCalled = true; });
+  test.isTrue(nextCalled, 'Duplicate middleware should simply call next');
+  cookiesInstance.destroy();
 });
 
 Tinytest.addAsync('Server: {middleware} method - default', (test, next) => {
@@ -172,6 +212,36 @@ Tinytest.addAsync('Server: {handler + default middleware} callback - async', (te
   })();
 });
 
+Tinytest.addAsync('Server: {handler + default middleware} callback - async waits', (test, next) => {
+  (async () => {
+    const testValue = Random.id();
+    const testPath = '/middleware/waits';
+    const testUrl = `${ENDPOINT_COOKIES_TEST}${testPath}`;
+    const cookiesInstance = new Cookies({
+      name: test.test_case.name,
+      auto: false,
+      runOnServer: true,
+      handler: async (cookiesCoreInstance) => {
+        if (cookiesCoreInstance.response.req.originalUrl.endsWith(testPath)) {
+          await (new Promise(resolve => setTimeout(resolve, 100)));
+          test.equal(cookiesCoreInstance.get('delayTest'), testValue, 'Async handler returns expected value after delay');
+          cookiesInstance.destroy();
+        }
+      }
+    });
+
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Cookie': `delayTest=${testValue}`
+      },
+    });
+
+    test.isTrue(response.ok, 'Expected response.ok to be true');
+    next();
+  })();
+});
+
 Tinytest.addAsync('Server: {handler} callback - set and rewrite cookies', (test, next) => {
   (async () => {
     const testValue1 = Random.id();
@@ -198,7 +268,6 @@ Tinytest.addAsync('Server: {handler} callback - set and rewrite cookies', (test,
     });
 
     const headerCookies = response.headers.get('set-cookie');
-    console.log('headerCookies', headerCookies)
     const cookies = new CookiesCore({
       _cookies: headerCookies || '',
       setCookie: true

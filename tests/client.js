@@ -8,7 +8,6 @@ const circularArr = [true, false, null, {key1: 1, key2: false, key3: [true, fals
 circularArr.push(circularArr);
 circularArr.push(circularObj);
 
-
 const testKeyVals = [{
   key: '⦁',
   value: '⦶'
@@ -44,7 +43,33 @@ const testKeyVals = [{
   value: circularArr
 }];
 
+Tinytest.add('Class - Cookies instance - __prepareSendData generates query correctly', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: false, allowQueryStringCookies: true });
+
+  // set isCordova to true as `?___cookies___=` query string only added on Cordova and Desktop
+  const origiscordova = Meteor.isCordova;
+  Meteor.isCordova = true;
+
+  // Manually set some cookies
+  cookiesInstance.cookies = { key1: 'value1', key2: 'value2' };
+  const { path, query } = cookiesInstance.__prepareSendData();
+  Meteor.isCordova = origiscordova;
+
+  test.isTrue(typeof path === 'string' && path.length > 0, 'Path is generated');
+  test.isTrue(query.startsWith('?___cookies___='), 'Query string is generated correctly');
+});
+
 const cookies = new Cookies();
+
+Tinytest.add('cookies: server methods throws - destroy', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: false });
+  test.throws(() =>{ cookiesInstance.destroy(); }, /Server only/, 'destroy() should throw on Client');
+});
+
+Tinytest.add('cookies: server methods throws - middleware', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: false });
+  test.throws(() =>{ cookiesInstance.middleware(); }, /Server only/, 'middleware() should throw on Client');
+});
 
 Tinytest.add('cookies: set() - empty value', test => {
   const testVal = void 0;
