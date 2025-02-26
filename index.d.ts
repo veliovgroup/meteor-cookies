@@ -44,6 +44,14 @@ declare module 'meteor/ostrio:cookies' {
      * Specifies the maximum age in seconds.
      */
     maxAge?: number;
+    /**
+     * Specifies `Partitioned` attribute in `Set-Cookie` header. When enabled, clients will only send the cookie back when the current domain _and_ top-level domain matches.
+     */
+    partitioned?: boolean;
+    /**
+     * Specifies the value for the `Priority` attribute in `Set-Cookie` header
+     */
+    priority?: 'low' | 'Low' | 'medium' | 'Medium' | 'high' | 'High';
   }
 
   /**
@@ -54,6 +62,10 @@ declare module 'meteor/ostrio:cookies' {
      * Current cookies as a string (e.g., document.cookie) or as an object.
      */
     _cookies: string | CookieDict;
+    /**
+     * Sets NAME property of CookiesCore instance, use for instance identification
+     */
+    name?: string;
     /**
      * Set to `true` when `_cookies` option derivative of `Set-Cookie` header
      */
@@ -92,11 +104,11 @@ declare module 'meteor/ostrio:cookies' {
     /**
      * Custom middleware handler callback.
      */
-    handler?: (cookies: CookiesCore) => void;
+    handler?: (cookies: CookiesCore) => void | Promise<void>;
     /**
      * Callback invoked when cookies are received via send methods.
      */
-    onCookies?: (cookies: CookiesCore) => void;
+    onCookies?: (cookies: CookiesCore) => void | Promise<void>;
   }
 
   /**
@@ -179,6 +191,6 @@ declare module 'meteor/ostrio:cookies' {
       req: IncomingMessage,
       res: ServerResponse,
       next: () => void
-    ) => void;
+    ) => void | Promise<void>;
   }
 }

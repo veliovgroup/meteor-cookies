@@ -1,4 +1,5 @@
 import { Meteor } from 'meteor/meteor';
+import helpers from './helpers.js';
 
 let fetch;
 let WebApp;
@@ -14,328 +15,11 @@ const urlRE = /\/___cookie___\/set/;
 const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__?.ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.ROOT_URL || false);
 const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__?.MOBILE_ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.MOBILE_ROOT_URL || false);
 
-const helpers = {
-  isUndefined(obj) {
-    return obj === void 0;
-  },
-  isArray(obj) {
-    return Array.isArray(obj);
-  },
-  clone(obj) {
-    if (!this.isObject(obj)) {
-      return obj;
-    }
-    return this.isArray(obj) ? [...obj] : { ...obj };
-  },
-  isNumber(obj) {
-    return Object.prototype.toString.call(obj) === '[object Number]';
-  },
-  isObject(obj) {
-    return Object.prototype.toString.call(obj) === '[object Object]';
-  },
-  isFunction(obj) {
-    if (this.isUndefined(obj)) {
-      return false;
-    }
-    const type = Object.prototype.toString.call(obj);
-    return type === '[object Function]' || type === '[object AsyncFunction]';
-  },
-};
-
-/**
- * @function
- * @name customEscape
- * @param {string} str
- * @returns {string}
- * @summary Custom implementation for deprecated `escape` function
- * @private
- */
-const customEscape = (str) => {
-  return String(str).replace(/[^A-Za-z0-9@*\_\+\-\.\/]/g, (ch) => {
-    const code = ch.charCodeAt(0);
-    if (code < 256) {
-      let hex = code.toString(16).toUpperCase();
-      return '%' + (hex.length === 1 ? '0' + hex : hex);
-    }
-
-    let hex = code.toString(16).toUpperCase();
-    // Ensure 4-digit hexadecimal
-    while (hex.length < 4) {
-      hex = '0' + hex;
-    }
-    return '%u' + hex;
-  });
-};
-
-/**
- * @function
- * @name customUnescape
- * @param {string} str
- * @returns {string}
- * @summary Custom implementation for deprecated `unescape` function
- * @private
- */
-const customUnescape = (str) => {
-  return String(str).replace(/(%u[0-9A-Fa-f]{4})|(%[0-9A-Fa-f]{2})/g, (match) => {
-    if (match.startsWith('%u')) {
-      return String.fromCharCode(parseInt(match.slice(2), 16));
-    }
-
-    return String.fromCharCode(parseInt(match.slice(1), 16));
-  });
-};
-
-/**
- * @url https://github.com/jshttp/cookie/blob/master/index.js
- * @name cookie
- * @author jshttp
- * @license
- * (The MIT License)
- *
- * Copyright (c) 2012-2014 Roman Shtylman <shtylman@gmail.com>
- * Copyright (c) 2015 Douglas Christopher Wilson <doug@somethingdoug.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files (the
- * 'Software'), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to
- * the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-const decode = decodeURIComponent;
-const encode = encodeURIComponent;
-const cookieSplitRegExp = /; */;
-const setCookieSplitRegExp = /, */;
-
-/**
- * RegExp to match field-content in RFC 7230 sec 3.2
- *
- * field-content = field-vchar [ 1*( SP / HTAB ) field-vchar ]
- * field-vchar   = VCHAR / obs-text
- * obs-text      = %x80-FF
- */
-const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
-
-/**
- * @function
- * @name tryDecode
- * @param {string} str
- * @param {function} d
- * @summary Try decoding a string using a decoding function.
- * @private
- */
-const tryDecode = (str, d) => {
-  try {
-    return d(str);
-  } catch (_e) {
-    return str;
-  }
-};
-
-/**
- * @function
- * @name parse
- * @param {string} str
- * @param { setCookie: boolean, decode: function } [options]
- * @returns {[key: string]: unknown}
- * @summary
- * Parse a cookie header.
- * Parse the given cookie header string into an object
- * The object has the various cookies as keys(names) => values
- * @private
- */
-const parse = (str, options) => {
-  if (typeof str !== 'string') {
-    throw new Meteor.Error(404, 'argument str must be a string');
-  }
-  const obj = {};
-  const opt = options || { setCookie: false };
-  let val;
-  let key;
-  let eqIndx;
-
-  str.split(opt.setCookie ? setCookieSplitRegExp : cookieSplitRegExp).forEach((_pair) => {
-    let pair = _pair;
-    if (opt.setCookie) {
-      pair = pair.split(cookieSplitRegExp)[0];
-    }
-
-    eqIndx = pair.indexOf('=');
-    if (eqIndx < 0) {
-      return;
-    }
-
-    key = pair.slice(0, eqIndx).trim();
-    key = tryDecode(customUnescape(key), (opt.decode || decode));
-    val = pair.slice(++eqIndx).trim();
-    if (val[0] === '"') {
-      val = val.slice(1, -1);
-    }
-
-    if (void 0 === obj[key]) {
-      obj[key] = tryDecode(val, (opt.decode || decode));
-    }
-  });
-  return obj;
-};
-
-/**
- * @function
- * @name antiCircular
- * @param data {object} - Circular or any other object which needs to be non-circular
- * @returns {string}
- * @private
- */
-const antiCircular = (_obj) => {
-  const object = helpers.clone(_obj);
-  const cache = new WeakMap();
-  return JSON.stringify(object, (_key, value) => {
-    if (typeof value === 'object' && value !== null) {
-      if (cache.get(value)) {
-        return void 0;
-      }
-      cache.set(value, true);
-    }
-    return value;
-  });
-};
-
-/**
- * @function
- * @private
- * @name serialize
- * @param {string} name
- * @param {string} val
- * @param {object} [options]
- * @returns { cookieString: string, sanitizedValue: unknown }
- * @summary
- * Serialize data into a cookie header.
- * Serialize the a name value pair into a cookie string suitable for
- * http headers. An optional options object specified cookie parameters.
- * serialize('foo', 'bar', { httpOnly: true }) => "foo=bar; httpOnly"
- */
-const serialize = (key, val, opt = {}) => {
-  let name;
-
-  if (!fieldContentRegExp.test(key)) {
-    name = customEscape(key);
-  } else {
-    name = key;
-  }
-
-  let sanitizedValue = val;
-  let value = val;
-  if (!helpers.isUndefined(value)) {
-    if (helpers.isObject(value) || helpers.isArray(value)) {
-      const stringified = antiCircular(value);
-      value = encode(`JSON.parse(${stringified})`);
-      sanitizedValue = JSON.parse(stringified);
-    } else {
-      value = encode(value);
-      if (value && !fieldContentRegExp.test(value)) {
-        value = customEscape(value);
-      }
-    }
-  } else {
-    value = '';
-  }
-
-  const pairs = [`${name}=${value}`];
-
-  if (helpers.isNumber(opt.maxAge)) {
-    pairs.push(`Max-Age=${opt.maxAge}`);
-  }
-
-  if (opt.domain && typeof opt.domain === 'string') {
-    if (!fieldContentRegExp.test(opt.domain)) {
-      throw new Meteor.Error(404, 'option domain is invalid');
-    }
-    pairs.push(`Domain=${opt.domain}`);
-  }
-
-  if (opt.path && typeof opt.path === 'string') {
-    if (!fieldContentRegExp.test(opt.path)) {
-      throw new Meteor.Error(404, 'option path is invalid');
-    }
-    pairs.push(`Path=${opt.path}`);
-  } else {
-    pairs.push('Path=/');
-  }
-
-  opt.expires = opt.expires || opt.expire || false;
-  if (opt.expires === Infinity) {
-    pairs.push('Expires=Fri, 31 Dec 9999 23:59:59 GMT');
-  } else if (opt.expires instanceof Date) {
-    pairs.push(`Expires=${opt.expires.toUTCString()}`);
-  } else if (opt.expires === 0) {
-    pairs.push('Expires=0');
-  } else if (helpers.isNumber(opt.expires)) {
-    pairs.push(`Expires=${(new Date(opt.expires)).toUTCString()}`);
-  }
-
-  if (opt.httpOnly) {
-    pairs.push('HttpOnly');
-  }
-
-  if (opt.secure) {
-    pairs.push('Secure');
-  }
-
-  if (opt.firstPartyOnly) {
-    pairs.push('First-Party-Only');
-  }
-
-  if (opt.sameSite) {
-    pairs.push(opt.sameSite === true ? 'SameSite' : `SameSite=${opt.sameSite}`);
-  }
-
-  return { cookieString: pairs.join('; '), sanitizedValue };
-};
-
-const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
-const isTypedRegEx = /false|true|null/;
-const deserialize = (string) => {
-  if (typeof string !== 'string') {
-    return string;
-  }
-
-  if (isStringifiedRegEx.test(string)) {
-    let obj = string.match(isStringifiedRegEx)[1];
-    if (obj) {
-      try {
-        return JSON.parse(decode(obj));
-      } catch (e) {
-        Meteor._debug('[ostrio:cookies] [.get()] [deserialize()] Exception:', e, string, obj);
-        return string;
-      }
-    }
-    return string;
-  } else if (isTypedRegEx.test(string)) {
-    try {
-      return JSON.parse(string);
-    } catch (_e) {
-      return string;
-    }
-  }
-  return string;
-};
-
 /**
  * @locus Anywhere
  * @class CookiesCore
- * @param {object} opts - Options (configuration) object
+ * @param {object} [opts] - Options (configuration) object
+ * @param {string} [opts.name='COOKIES_CORE'] - Name property for instance identification
  * @param {object|string} opts._cookies - Current cookies as String or Object
  * @param {number|boolean} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
  * @param {boolean} opts.runOnServer - Expose Cookies class to Server
@@ -346,8 +30,8 @@ const deserialize = (string) => {
  * @summary Internal Class
  */
 class CookiesCore {
-  constructor(opts) {
-    this.NAME = 'COOKIES_CORE';
+  constructor(opts = {}) {
+    this.NAME = opts.name || 'COOKIES_CORE';
     this.id = Symbol(this.NAME);
 
     this.__pendingCookies = [];
@@ -366,8 +50,10 @@ class CookiesCore {
 
     if (helpers.isObject(opts._cookies)) {
       this.cookies = opts._cookies;
+    } else if (typeof opts._cookies === 'string') {
+      this.cookies = helpers.parse(opts._cookies, { setCookie: opts.setCookie });
     } else {
-      this.cookies = parse(opts._cookies, { setCookie: opts.setCookie });
+      this.cookies = {};
     }
   }
 
@@ -381,13 +67,13 @@ class CookiesCore {
    * @returns {string|void}
    */
   get(key, _tmp) {
-    const cookieString = _tmp ? parse(_tmp) : this.cookies;
+    const cookieString = _tmp ? helpers.parse(_tmp) : this.cookies;
     if (!key || !cookieString) {
       return void 0;
     }
 
     if (cookieString.hasOwnProperty(key)) {
-      return deserialize(cookieString[key]);
+      return helpers.deserialize(cookieString[key]);
     }
 
     return void 0;
@@ -397,9 +83,9 @@ class CookiesCore {
    * @locus Anywhere
    * @memberOf CookiesCore
    * @name set
-   * @param {string} key   - The name of the cookie to create/overwrite
+   * @param {string} key - The name of the cookie to create/overwrite
    * @param {string} value - The value of the cookie
-   * @param {object} opts  - [Optional] Cookie options (see readme docs)
+   * @param {CookieOptions} opts - [Optional] Cookie options (see readme docs)
    * @summary Create/overwrite a cookie.
    * @returns {boolean}
    */
@@ -408,7 +94,7 @@ class CookiesCore {
       if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
         opts.expires = new Date(+new Date() + this.TTL);
       }
-      const { cookieString, sanitizedValue } = serialize(key, value, opts);
+      const { cookieString, sanitizedValue } = helpers.serialize(key, value, opts);
 
       this.cookies[key] = sanitizedValue;
       if (Meteor.isClient) {
@@ -441,7 +127,7 @@ class CookiesCore {
    */
   remove(key, path = '/', domain = '') {
     if (key && this.cookies.hasOwnProperty(key)) {
-      const { cookieString } = serialize(key, '', {
+      const { cookieString } = helpers.serialize(key, '', {
         domain,
         path,
         expires: new Date(0)
@@ -477,7 +163,7 @@ class CookiesCore {
    * @returns {boolean}
    */
   has(key, _tmp) {
-    const cookieString = _tmp ? parse(_tmp) : this.cookies;
+    const cookieString = _tmp ? helpers.parse(_tmp) : this.cookies;
     if (!key || !cookieString) {
       return false;
     }
@@ -519,6 +205,7 @@ class CookiesCore {
         credentials: 'include',
         type: 'cors'
       }).then((response) => {
+        this.cookies = helpers.parse(document.cookie);
         cb(void 0, response);
       }).catch(cb);
     } else {
@@ -546,10 +233,13 @@ class CookiesCore {
 
     const { path, query } = this.__prepareSendData();
 
-    return await fetch(`${path}${query}`, {
+    const response = await fetch(`${path}${query}`, {
       credentials: 'include',
       type: 'cors'
     });
+
+    this.cookies = helpers.parse(document.cookie);
+    return response;
   }
 
   /**
@@ -568,7 +258,7 @@ class CookiesCore {
       const cookiesKeys = this.keys();
       const cookiesArray = [];
       for (let i = 0; i < cookiesKeys.length; i++) {
-        const { sanitizedValue } = serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
+        const { sanitizedValue } = helpers.serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
         const pair = `${cookiesKeys[i]}=${sanitizedValue}`;
         if (!cookiesArray.includes(pair)) {
           cookiesArray.push(pair);
@@ -589,7 +279,8 @@ class CookiesCore {
  * @locus Anywhere
  * @class Cookies
  * @extends CookiesCore
- * @param {object} opts
+ * @param {object} [opts]
+ * @param {string} [opts.name='COOKIES'] - Name property for instance identification
  * @param {number} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
  * @param {boolean} opts.auto - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
  * @param {function} opts.handler - [Server] Custom Middleware handler
@@ -621,37 +312,8 @@ class Cookies extends CookiesCore {
    */
   static isMiddlewareRegistered = false;
 
-  /**
-   * @function
-   * @locus Server
-   * @summary Creates new CookiesCore instance
-   * @param {IncomingMessage} request
-   * @param {ServerResponse} response
-   * @param { runOnServer: boolean, allowQueryStringCookies: boolean, TTL: number|boolean } opts
-   * @returns {CookiesCore}
-   * @throws {Meteor.Error}
-   * @static
-   */
-  static __getCookiesCore = (request, response, opts) => {
-    let _cookies = {};
-    if (!opts.runOnServer) {
-      throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
-    }
-
-    if (request.headers && request.headers.cookie) {
-      _cookies = parse(request.headers.cookie);
-    }
-
-    return new CookiesCore({
-      _cookies,
-      TTL: opts.TTL,
-      runOnServer: opts.runOnServer,
-      response,
-      allowQueryStringCookies: opts.allowQueryStringCookies
-    });
-  };
-
   constructor(opts = {}) {
+    opts.name = typeof opts.name === 'string' ? opts.name : 'COOKIES';
     opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
     opts.allowQueryStringCookies = (opts.allowQueryStringCookies !== true) ? false : true;
@@ -664,6 +326,7 @@ class Cookies extends CookiesCore {
       super(opts);
       opts.auto = (opts.auto !== false) ? true : false;
       this.opts = opts;
+      this._coreInstancesCount = 0;
       this.isDestroyed = false;
       this.hasMiddleware = false;
 
@@ -672,7 +335,7 @@ class Cookies extends CookiesCore {
         // PREVIOUSLY REGISTERED MIDDLEWARES ARE CHECKED VIA Cookies.isMiddlewareRegistered
         // AND IF `opts.auto: true` WE KNOW THAT NEW MIDDLEWARE WILL BE REGISTERED
         if ((!opts.auto && !Cookies.isMiddlewareRegistered)) {
-          Meteor._debug('[ostrio:cookies] [WARNING] {onCookies} has no effect when {auto: false}. `onCookies` hook would not run!');
+          Meteor._debug('[ostrio:cookies] [WARNING] {onCookies} has no effect when {auto: false}. `onCookies` hook would not run!', this.NAME);
         } else {
           Cookies.__hooks.set(this.id, opts.onCookies);
         }
@@ -701,15 +364,19 @@ class Cookies extends CookiesCore {
    * @name middleware
    * @summary Get Cookies instance into callback
    * @throws {Meteor.Error}
-   * @returns {function(req: IncomingMessage, res: ServerResponse, next: NextFunction): void}
+   * @returns {function(req: IncomingMessage, res: ServerResponse, next: NextFunction): void | Promise<void>}
    */
   middleware() {
     if (!Meteor.isServer) {
       throw new Meteor.Error(500, 'Server only: `.middleware()` cannot be used on the Client');
     }
 
+    if (!this.opts.runOnServer) {
+      throw new Meteor.Error(400, 'Can\'t use middleware when `runOnServer` is false.');
+    }
+
     if (Cookies.isMiddlewareRegistered) {
-      Meteor._debug('[ostrio:cookies] [WARNING] Middleware already registered! All consequent middleware registration will have no effect as it will execute same logic and call the same hooks/callbacks');
+      Meteor._debug('[ostrio:cookies] [WARNING] Middleware already registered! All consequent middleware registration will have no effect as it will execute same logic and call the same hooks/callbacks', this.NAME);
       return this.__blankMiddleware.bind(this);
     }
 
@@ -722,7 +389,7 @@ class Cookies extends CookiesCore {
         return;
       }
 
-      req.Cookies = Cookies.__getCookiesCore(req, res, this.opts);
+      req.Cookies = this.__getCookiesCore(req, res);
       await this.__execute(req, res, Cookies.__handlers);
       next();
     };
@@ -774,14 +441,14 @@ class Cookies extends CookiesCore {
     let cookiesCore = req.Cookies;
     if (map.size) {
       if (!cookiesCore) {
-        cookiesCore = Cookies.__getCookiesCore(req, res, this.opts);
+        cookiesCore = this.__getCookiesCore(req, res);
       }
 
       for (const [_id, handler] of map) {
         try {
           await handler(cookiesCore);
         } catch (error) {
-          Meteor._debug('[ostrio:cookies] Error in `handler` or `onCookies` hook', _id, error);
+          Meteor._debug('[ostrio:cookies] Error in `handler` callback or `onCookies` hook', this.NAME, _id, error);
         }
       }
       return true;
@@ -822,9 +489,12 @@ class Cookies extends CookiesCore {
     }
 
     if (urlRE.test(req._parsedUrl.path)) {
+      res.statusCode = 200;
+
       const matchedCordovaOrigin = !!req.headers.origin
         && this.allowedCordovaOrigins
         && this.allowedCordovaOrigins.test(req.headers.origin);
+
       const matchedOrigin = matchedCordovaOrigin
         || (!!req.headers.origin && this.originRE.test(req.headers.origin));
 
@@ -833,18 +503,18 @@ class Cookies extends CookiesCore {
         res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
       }
 
-      const cookiesArray = [];
       let cookiesObject = {};
       if (matchedCordovaOrigin && this.opts.allowQueryStringCookies && req.query.___cookies___) {
-        cookiesObject = parse(decodeURIComponent(req.query.___cookies___));
+        cookiesObject = helpers.parse(decodeURIComponent(req.query.___cookies___));
       } else if (req.headers.cookie) {
-        cookiesObject = parse(req.headers.cookie);
+        cookiesObject = helpers.parse(req.headers.cookie);
       }
 
       const cookiesKeys = Object.keys(cookiesObject);
+      const cookiesArray = [];
       if (cookiesKeys.length) {
         for (let i = 0; i < cookiesKeys.length; i++) {
-          const { cookieString } = serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
+          const { cookieString } = helpers.serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
           if (!cookiesArray.includes(cookieString)) {
             cookiesArray.push(cookieString);
           }
@@ -856,13 +526,40 @@ class Cookies extends CookiesCore {
       }
 
       await this.__execute(req, res, Cookies.__hooks);
-      res.writeHead(200);
-      res.end('');
+      res.setHeader('Content-Type', 'plain/text');
+      res.end();
     } else {
-      req.Cookies = Cookies.__getCookiesCore(req, res, this.opts);
+      req.Cookies = this.__getCookiesCore(req, res);
       await this.__execute(req, res, Cookies.__handlers);
       next();
     }
+  }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @summary Creates new CookiesCore instance
+   * @param {IncomingMessage} request
+   * @param {ServerResponse} response
+   * @returns {CookiesCore}
+   * @private
+   */
+  __getCookiesCore(request, response) {
+    let _cookies = {};
+
+    if (request.headers && request.headers.cookie) {
+      _cookies = helpers.parse(request.headers.cookie);
+    }
+
+    this._coreInstancesCount++;
+    return new CookiesCore({
+      _cookies,
+      TTL: this.opts.TTL,
+      runOnServer: this.opts.runOnServer,
+      response,
+      allowQueryStringCookies: this.opts.allowQueryStringCookies,
+      name: `CORE_${this._coreInstancesCount}_BY_${this.NAME}`,
+    });
   }
 }
 
