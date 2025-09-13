@@ -152,7 +152,7 @@ cookies.get('age'); // returns 25
 - `opts.httpOnly` {*boolean*}: Inaccessible to client-side JavaScript
 - `opts.sameSite` {*boolean* | *'None'* | *'Strict'* | *'Lax'*}: Cross-site cookie policy
 - `opts.partitioned` {*boolean*}: Specifies `Partitioned` attribute in `Set-Cookie` header. When enabled, clients will only send the cookie back when the current domain *and* top-level domain matches
-- `opts.priority` {*'Low' | 'Medium' | 'High'*}: Specifies the value for the `Priority` attribute in `Set-Cookie`` header
+- `opts.priority` {*'Low' | 'Medium' | 'High'*}: Specifies the value for the `Priority` attribute in `Set-Cookie` header
 - `opts.firstPartyOnly` {*boolean*}: *Deprecated* (use `sameSite` instead)
 
 ```js
