@@ -1,4 +1,5 @@
 .npm
 .DS_Store
 .eslintcache
+.cursor/hooks/state
 node_modules
