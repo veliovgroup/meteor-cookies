@@ -9,7 +9,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 
 - 👨‍💻 Stable codebase
 - 🚀 400,000+ downloads
-- 👨‍🔬 **99.9% tests coverage** / TDD
+- 👨‍🔬 **99.95% tests coverage** / TDD
 - 📦 No external dependencies (no `underscore`, `jQuery`, or `Blaze`)
 - 🖥 Consistent API across *Server* and *Client* environments
 - 📱 Compatible with *Cordova*, *Browser*, *Meteor-Desktop*, and other client platforms
