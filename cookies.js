@@ -10,10 +10,57 @@ if (Meteor.isServer) {
   fetch = require('meteor/fetch').fetch;
 }
 
-const NoOp  = () => {};
+const NoOp = () => {};
 const urlRE = /\/___cookie___\/set/;
 const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__?.ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.ROOT_URL || false);
 const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__?.MOBILE_ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.MOBILE_ROOT_URL || false);
+
+/**
+ * @function
+ * @private
+ * @name escapeRegExp
+ * @param {string} str
+ * @returns {string}
+ * @summary Escape string for safe RegExp construction
+ */
+const escapeRegExp = (str) => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+/**
+ * @function
+ * @private
+ * @name normalizeOrigin
+ * @param {string|boolean} url
+ * @returns {string|boolean}
+ * @summary Normalize URL string to origin
+ */
+const normalizeOrigin = (url) => {
+  if (typeof url !== 'string') {
+    return false;
+  }
+
+  const match = url.match(/^https?:\/\/[^/]+/i);
+  return match ? match[0].replace(/\/+$/, '') : false;
+};
+
+/**
+ * @function
+ * @private
+ * @name buildOriginRegExp
+ * @param {string|boolean} root
+ * @param {string|boolean} mobileRoot
+ * @returns {RegExp|boolean}
+ * @summary Build allowed origin RegExp from Meteor root URLs
+ */
+const buildOriginRegExp = (root, mobileRoot) => {
+  const origins = [normalizeOrigin(root), normalizeOrigin(mobileRoot)].filter(Boolean);
+  if (!origins.length) {
+    return false;
+  }
+
+  return new RegExp(`^(?:${origins.map(escapeRegExp).join('|')})$`, 'i');
+};
 
 /**
  * @locus Anywhere
@@ -23,7 +70,7 @@ const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__
  * @param {object|string} opts._cookies - Current cookies as String or Object
  * @param {number|boolean} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
  * @param {boolean} opts.runOnServer - Expose Cookies class to Server
- * @param {boolean} opts.setCookie - Set to `true` when `_cookies` option derivative of `Set-Cookie` header
+ * @param {boolean} opts.setCookie - Set to `true` when `_cookies` option derives from `Set-Cookie` header
  * @param {http.ServerResponse|object} opts.response - This object is created internally by a HTTP server
  * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
@@ -44,9 +91,11 @@ class CookiesCore {
 
     if (this.allowedCordovaOrigins === true) {
       this.allowedCordovaOrigins = /^http:\/\/localhost:12[0-9]{3}$/;
+    } else if (!helpers.isRegExp(this.allowedCordovaOrigins)) {
+      this.allowedCordovaOrigins = false;
     }
 
-    this.originRE = new RegExp(`^https?:\/\/(${rootUrl ? rootUrl : ''}${mobileRootUrl ? ('|' + mobileRootUrl) : ''})$`);
+    this.originRE = buildOriginRegExp(rootUrl, mobileRootUrl);
 
     if (helpers.isObject(opts._cookies)) {
       this.cookies = opts._cookies;
@@ -72,7 +121,7 @@ class CookiesCore {
       return void 0;
     }
 
-    if (cookieString.hasOwnProperty(key)) {
+    if (helpers.hasOwn(cookieString, key)) {
       return helpers.deserialize(cookieString[key]);
     }
 
@@ -91,17 +140,17 @@ class CookiesCore {
    */
   set(key, value, opts = {}) {
     if (key && !helpers.isUndefined(value)) {
-      if (helpers.isNumber(this.TTL) && opts.expires === undefined) {
-        opts.expires = new Date(+new Date() + this.TTL);
+      const cookieOpts = helpers.isObject(opts) ? { ...opts } : {};
+      if (helpers.isNumber(this.TTL) && cookieOpts.expires === undefined) {
+        cookieOpts.expires = new Date(+new Date() + this.TTL);
       }
-      const { cookieString, sanitizedValue } = helpers.serialize(key, value, opts);
+      const { cookieString, sanitizedValue } = helpers.serialize(key, value, cookieOpts);
 
       this.cookies[key] = sanitizedValue;
       if (Meteor.isClient) {
         document.cookie = cookieString;
       } else if (this.response) {
-        this.__pendingCookies.push(cookieString);
-        this.response.setHeader('Set-Cookie', this.__pendingCookies);
+        this.__setCookieHeader(cookieString);
       }
       return true;
     }
@@ -126,7 +175,7 @@ class CookiesCore {
    * @returns {boolean}
    */
   remove(key, path = '/', domain = '') {
-    if (key && this.cookies.hasOwnProperty(key)) {
+    if (key && helpers.hasOwn(this.cookies, key)) {
       const { cookieString } = helpers.serialize(key, '', {
         domain,
         path,
@@ -137,7 +186,7 @@ class CookiesCore {
       if (Meteor.isClient) {
         document.cookie = cookieString;
       } else if (this.response) {
-        this.response.setHeader('Set-Cookie', cookieString);
+        this.__setCookieHeader(cookieString);
       }
       return true;
     }
@@ -168,7 +217,7 @@ class CookiesCore {
       return false;
     }
 
-    return cookieString.hasOwnProperty(key);
+    return helpers.hasOwn(cookieString, key);
   }
 
   /**
@@ -196,6 +245,7 @@ class CookiesCore {
   send(cb = NoOp) {
     if (Meteor.isServer) {
       cb(new Meteor.Error(400, 'Client only: `.send()` cannot be used on the Server'));
+      return void 0;
     }
 
     if (this.runOnServer) {
@@ -273,6 +323,33 @@ class CookiesCore {
 
     return { path, query };
   }
+
+  /**
+   * @locus Server
+   * @memberOf CookiesCore
+   * @name __setCookieHeader
+   * @param {string} cookieString
+   * @summary Append a Set-Cookie header value to current response
+   * @returns {void}
+   * @private
+   */
+  __setCookieHeader(cookieString) {
+    if (!this.response || !helpers.isFunction(this.response.setHeader)) {
+      return;
+    }
+
+    if (!this.__pendingCookies.length && helpers.isFunction(this.response.getHeader)) {
+      const currentHeader = this.response.getHeader('Set-Cookie');
+      if (helpers.isArray(currentHeader)) {
+        this.__pendingCookies = currentHeader.slice();
+      } else if (currentHeader) {
+        this.__pendingCookies = [currentHeader];
+      }
+    }
+
+    this.__pendingCookies.push(cookieString);
+    this.response.setHeader('Set-Cookie', this.__pendingCookies);
+  }
 }
 
 /**
@@ -284,7 +361,7 @@ class CookiesCore {
  * @param {number} opts.TTL - Default cookies expiration time (max-age) in milliseconds, by default - session (false)
  * @param {boolean} opts.auto - [Server] Auto-bind in middleware as `req.Cookies`, by default `true`
  * @param {function} opts.handler - [Server] Custom Middleware handler
- * @param {function} opts.onCookies - [Server] Hook/Callback that called when cookies are received via `.send` and `.sendAsync` methods from server
+ * @param {function} opts.onCookies - [Server] Hook/Callback called when cookies are received via `.send` and `.sendAsync` methods from server
  * @param {boolean} opts.runOnServer - Expose Cookies class to Server
  * @param {boolean} opts.allowQueryStringCookies - Allow passing Cookies in a query string (in URL). Primary should be used only in Cordova environment
  * @param {Regex|boolean} opts.allowedCordovaOrigins - [Server] Allow setting Cookies from that specific origin which in Meteor/Cordova is localhost:12XXX (^http://localhost:12[0-9]{3}$)
@@ -331,7 +408,7 @@ class Cookies extends CookiesCore {
       this.hasMiddleware = false;
 
       if (helpers.isFunction(opts.onCookies)) {
-        // `onCokies` HOOK REQUIRES AT LEAST ONE REGISTERED MIDDLEWARE
+        // `onCookies` HOOK REQUIRES AT LEAST ONE REGISTERED MIDDLEWARE
         // PREVIOUSLY REGISTERED MIDDLEWARES ARE CHECKED VIA Cookies.isMiddlewareRegistered
         // AND IF `opts.auto: true` WE KNOW THAT NEW MIDDLEWARE WILL BE REGISTERED
         if ((!opts.auto && !Cookies.isMiddlewareRegistered)) {
@@ -376,7 +453,7 @@ class Cookies extends CookiesCore {
     }
 
     if (Cookies.isMiddlewareRegistered) {
-      Meteor._debug('[ostrio:cookies] [WARNING] Middleware already registered! All consequent middleware registration will have no effect as it will execute same logic and call the same hooks/callbacks', this.NAME);
+      Meteor._debug('[ostrio:cookies] [WARNING] Middleware already registered! All subsequent middleware registration will have no effect as it will execute same logic and call the same hooks/callbacks', this.NAME);
       return this.__blankMiddleware.bind(this);
     }
 
@@ -488,26 +565,29 @@ class Cookies extends CookiesCore {
       return;
     }
 
-    if (urlRE.test(req._parsedUrl.path)) {
+    const requestPath = (req._parsedUrl && req._parsedUrl.path) || req.url || '';
+
+    if (urlRE.test(requestPath)) {
       res.statusCode = 200;
 
-      const matchedCordovaOrigin = !!req.headers.origin
+      const headers = req.headers || {};
+      const matchedCordovaOrigin = !!headers.origin
         && this.allowedCordovaOrigins
-        && this.allowedCordovaOrigins.test(req.headers.origin);
+        && this.allowedCordovaOrigins.test(headers.origin);
 
       const matchedOrigin = matchedCordovaOrigin
-        || (!!req.headers.origin && this.originRE.test(req.headers.origin));
+        || (!!headers.origin && this.originRE && this.originRE.test(headers.origin));
 
       if (matchedOrigin) {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+        res.setHeader('Access-Control-Allow-Origin', headers.origin);
       }
 
       let cookiesObject = {};
-      if (matchedCordovaOrigin && this.opts.allowQueryStringCookies && req.query.___cookies___) {
+      if (matchedCordovaOrigin && this.opts.allowQueryStringCookies && req.query && req.query.___cookies___) {
         cookiesObject = helpers.parse(decodeURIComponent(req.query.___cookies___));
-      } else if (req.headers.cookie) {
-        cookiesObject = helpers.parse(req.headers.cookie);
+      } else if (headers.cookie) {
+        cookiesObject = helpers.parse(headers.cookie);
       }
 
       const cookiesKeys = Object.keys(cookiesObject);

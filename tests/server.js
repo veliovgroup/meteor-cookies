@@ -5,7 +5,7 @@ import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
 import { antiCircular, isArray, isObject } from '../helpers';
 
 const circularObj = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
-circularObj.slef = circularObj;
+circularObj.self = circularObj;
 
 const circularArr = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']];
 circularArr.push(circularArr);
@@ -69,6 +69,23 @@ WebApp.connectHandlers.use('/' + PATH_COOKIES_TEST, (_req, res) => {
   res.end('cookies test endpoint');
 });
 
+const mockResponse = () => {
+  const headers = {};
+  return {
+    headers,
+    statusCode: 0,
+    setHeader(name, value) {
+      headers[name.toLowerCase()] = value;
+    },
+    getHeader(name) {
+      return headers[name.toLowerCase()];
+    },
+    end() {
+      this.ended = true;
+    }
+  };
+};
+
 Tinytest.addAsync('Server: Invalid cookie header', async (test, next) => {
   const request = { headers: { cookie: 'invalidCookieWithoutEquals' }, _parsedUrl: { path: '/some/path' } };
   const res = new (require('stream').PassThrough)();
@@ -86,7 +103,7 @@ Tinytest.addAsync('Server: Invalid cookie header', async (test, next) => {
 Tinytest.addAsync('Server: client methods throws - send', (test, next) => {
   const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
   cookiesInstance.send((error, response) => {
-    test.instanceOf(error, Meteor.Error, '.send() returns error on sever');
+    test.instanceOf(error, Meteor.Error, '.send() returns error on server');
     test.include(error.message, 'Client only', 'error.message has "Client only"');
     test.include(error.reason, 'Client only', 'error.reason has "Client only"');
     test.equal(error.error, 400, 'error.error is 400');
@@ -94,6 +111,115 @@ Tinytest.addAsync('Server: client methods throws - send', (test, next) => {
     cookiesInstance.destroy();
     next();
   });
+});
+
+Tinytest.add('Server: Set-Cookie parser preserves Expires date commas', (test) => {
+  const cookies = new CookiesCore({
+    _cookies: 'first=one; Expires=Wed, 21 Oct 2030 07:28:00 GMT; Path=/, second=two; Path=/',
+    setCookie: true
+  });
+
+  test.equal(cookies.keys(), ['first', 'second'], 'Set-Cookie parser splits only between cookies');
+  test.equal(cookies.get('first'), 'one', 'First cookie parsed correctly');
+  test.equal(cookies.get('second'), 'two', 'Second cookie parsed correctly');
+});
+
+Tinytest.add('Server: cookie names shadowing Object prototype work', (test) => {
+  const cookies = new CookiesCore({
+    _cookies: {
+      hasOwnProperty: 'cookie-value',
+      toString: 'string-cookie'
+    }
+  });
+
+  test.isTrue(cookies.has('hasOwnProperty'), 'hasOwnProperty cookie exists');
+  test.equal(cookies.get('hasOwnProperty'), 'cookie-value', 'hasOwnProperty cookie value is readable');
+  test.isTrue(cookies.remove('hasOwnProperty'), 'hasOwnProperty cookie is removable');
+  test.isFalse(cookies.has('hasOwnProperty'), 'hasOwnProperty cookie was removed');
+  test.equal(cookies.get('toString'), 'string-cookie', 'toString cookie remains readable');
+});
+
+Tinytest.add('Server: remove() appends Set-Cookie headers', (test) => {
+  const response = mockResponse();
+  const cookies = new CookiesCore({
+    _cookies: {
+      removeOne: 'one',
+      removeTwo: 'two'
+    },
+    response
+  });
+
+  test.isTrue(cookies.remove('removeOne'), 'First cookie removed');
+  test.isTrue(cookies.remove('removeTwo'), 'Second cookie removed');
+
+  const header = response.getHeader('Set-Cookie');
+  test.instanceOf(header, Array, 'Set-Cookie header is an array');
+  test.equal(header.length, 2, 'Both removal headers are retained');
+  test.include(header[0], 'removeOne=', 'First removal header retained');
+  test.include(header[1], 'removeTwo=', 'Second removal header retained');
+});
+
+Tinytest.addAsync('Server: Cordova origin allows query-string cookies', async (test) => {
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true
+  });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {
+      origin: 'http://localhost:12000'
+    },
+    query: {
+      ___cookies___: encodeURIComponent('cordovaCookie=cordovaValue')
+    },
+    _parsedUrl: {
+      path: '/___cookie___/set'
+    }
+  }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+
+  test.equal(response.getHeader('Access-Control-Allow-Origin'), 'http://localhost:12000', 'Cordova origin is allowed');
+  test.equal(response.getHeader('Access-Control-Allow-Credentials'), 'true', 'Credentials header is set');
+  test.equal(response.getHeader('Set-Cookie'), ['cordovaCookie=cordovaValue; Path=/'], 'Query string cookie is set');
+  test.isTrue(response.ended, 'Response ended');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: invalid Cordova origin option is ignored', async (test) => {
+  let nextCalled = false;
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: 'invalid'
+  });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {
+      origin: 'http://localhost:12000'
+    },
+    query: {
+      ___cookies___: encodeURIComponent('blockedCookie=blockedValue')
+    },
+    _parsedUrl: {
+      path: '/___cookie___/set'
+    }
+  }, response, () => {
+    nextCalled = true;
+  });
+
+  test.isFalse(nextCalled, 'Endpoint middleware should not call next');
+  test.isUndefined(response.getHeader('Access-Control-Allow-Origin'), 'Invalid Cordova origin option does not allow origin');
+  test.isUndefined(response.getHeader('Set-Cookie'), 'Query string cookie is ignored');
+  test.isTrue(response.ended, 'Response ended');
+  cookiesInstance.destroy();
 });
 
 Tinytest.addAsync('Server: client methods throws - sendAsync', async (test) => {

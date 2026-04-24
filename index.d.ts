@@ -1,104 +1,170 @@
-import type { Meteor } from 'meteor/meteor';
-import type { IncomingMessage, ServerResponse } from 'http';
-
-/**
- * A dictionary of cookie values.
- */
-export type CookieDict = { [key: string]: unknown };
-
 declare module 'meteor/ostrio:cookies' {
+  /**
+   * Primitive cookie values supported by ostrio:cookies.
+   */
+  export type CookiePrimitive = string | number | boolean | null;
+
+  /**
+   * Cookie values supported by ostrio:cookies.
+   */
+  export type CookieValue = CookiePrimitive | CookieDict | CookieValue[];
+
+  /**
+   * A dictionary of cookie values.
+   */
+  export interface CookieDict {
+    [key: string]: CookieValue | undefined;
+  }
+
+  /**
+   * Minimal Meteor.Error-compatible shape returned by client sync methods.
+   */
+  export interface MeteorError extends Error {
+    error?: string | number;
+    reason?: string;
+    details?: string;
+  }
+
+  /**
+   * Minimal request shape used by middleware and handlers.
+   */
+  export interface CookieRequest {
+    headers?: {
+      cookie?: string;
+      origin?: string;
+      [key: string]: string | string[] | undefined;
+    };
+    query?: {
+      ___cookies___?: string;
+      [key: string]: string | string[] | undefined;
+    };
+    url?: string;
+    originalUrl?: string;
+    _parsedUrl?: {
+      path?: string;
+    };
+    Cookies?: CookiesCore;
+    [key: string]: unknown;
+  }
+
+  /**
+   * Minimal response shape used by CookiesCore.
+   */
+  export interface CookieResponse {
+    req?: CookieRequest;
+    setHeader(name: string, value: string | string[]): void;
+    getHeader?(name: string): string | number | string[] | undefined;
+    [key: string]: unknown;
+  }
+
+  /**
+   * Middleware next callback.
+   */
+  export type NextFunction = () => void;
+
+  /**
+   * Connect-style middleware returned by Cookies#middleware().
+   */
+  export type CookieMiddleware = (
+    req: CookieRequest,
+    res: CookieResponse,
+    next: NextFunction
+  ) => void | Promise<void>;
+
   /**
    * Options for setting a cookie.
    */
   export interface CookieOptions {
     /**
-     * The path where the cookie is valid (default: '/').
+     * Cookie path. Defaults to '/'.
      */
     path?: string;
     /**
-     * The domain where the cookie is valid.
+     * Cookie domain.
      */
     domain?: string;
     /**
-     * The expiration date as a Date object or a number representing a UNIX timestamp (in milliseconds).
+     * Cookie expiration as Date, UNIX timestamp in milliseconds, 0, or Infinity.
      */
     expires?: Date | number;
     /**
-     * If true, the cookie is inaccessible via JavaScript on the client.
+     * Deprecated alias for expires.
+     */
+    expire?: Date | number;
+    /**
+     * If true, cookie is inaccessible via JavaScript on the client.
      */
     httpOnly?: boolean;
     /**
-     * If true, the cookie will only be transmitted over secure protocols.
+     * If true, cookie is transmitted only over secure protocols.
      */
     secure?: boolean;
     /**
-     * If true, the cookie is limited to first-party contexts.
+     * Deprecated. Use sameSite instead.
      */
     firstPartyOnly?: boolean;
     /**
-     * Controls whether the cookie is sent with cross-site requests.
-     * Can be a boolean or one of 'Strict', 'Lax', or 'None'.
+     * Controls whether cookie is sent with cross-site requests.
      */
     sameSite?: boolean | 'Strict' | 'Lax' | 'None';
     /**
-     * Specifies the maximum age in seconds.
+     * Maximum age in seconds.
      */
     maxAge?: number;
     /**
-     * Specifies `Partitioned` attribute in `Set-Cookie` header. When enabled, clients will only send the cookie back when the current domain _and_ top-level domain matches.
+     * Adds Partitioned attribute to Set-Cookie header.
      */
     partitioned?: boolean;
     /**
-     * Specifies the value for the `Priority` attribute in `Set-Cookie` header
+     * Adds Priority attribute to Set-Cookie header.
      */
     priority?: 'low' | 'Low' | 'medium' | 'Medium' | 'high' | 'High';
   }
 
   /**
-   * Options for configuring the CookiesCore class.
+   * Options for configuring CookiesCore.
    */
   export interface CookiesCoreOptions {
     /**
-     * Current cookies as a string (e.g., document.cookie) or as an object.
+     * Current cookies string or object.
      */
-    _cookies: string | CookieDict;
+    _cookies?: string | CookieDict;
     /**
-     * Sets NAME property of CookiesCore instance, use for instance identification
+     * Instance identification name.
      */
     name?: string;
     /**
-     * Set to `true` when `_cookies` option derivative of `Set-Cookie` header
+     * Set to true when _cookies comes from Set-Cookie header.
      */
     setCookie?: boolean;
     /**
-     * Default cookies expiration time (max-age) in milliseconds.
-     * If false, the cookie lasts for the session.
+     * Default cookie expiration time in milliseconds. false means session cookie.
      */
     TTL?: number | false;
     /**
-     * If true, the Cookies classes will be exposed on the server.
+     * Enables client send/sendAsync server sync.
      */
     runOnServer?: boolean;
     /**
      * HTTP server response object.
      */
-    response?: ServerResponse;
+    response?: CookieResponse;
     /**
-     * If true, allow passing cookies via query string (used primarily in Cordova).
+     * Allow passing cookies via query string, primarily for Cordova/Desktop.
      */
     allowQueryStringCookies?: boolean;
     /**
-     * A regular expression or boolean to allow cookies from specific origins.
+     * Allow Cordova/Desktop query-string cookies from matching origins.
      */
     allowedCordovaOrigins?: RegExp | boolean;
   }
 
   /**
-   * Options for configuring the Cookies class (extends CookiesCoreOptions).
+   * Options for configuring Cookies.
    */
   export interface CookiesOptions extends CookiesCoreOptions {
     /**
-     * Auto-bind middleware to server requests (default: true).
+     * Auto-bind middleware to server requests. Defaults to true.
      */
     auto?: boolean;
     /**
@@ -106,91 +172,77 @@ declare module 'meteor/ostrio:cookies' {
      */
     handler?: (cookies: CookiesCore) => void | Promise<void>;
     /**
-     * Callback invoked when cookies are received via send methods.
+     * Callback invoked when cookies are received via send/sendAsync.
      */
     onCookies?: (cookies: CookiesCore) => void | Promise<void>;
   }
 
   /**
    * Core cookie management class.
-   *
-   * Provides basic operations for reading, setting, removing,
-   * and sending cookies.
    */
   export class CookiesCore {
-    constructor(opts: CookiesCoreOptions);
+    constructor(opts?: CookiesCoreOptions);
 
     /**
-     * Retrieves the value of a cookie.
-     * @param key The name of the cookie.
-     * @param _tmp Optional unparsed cookie string.
-     * @returns The cookie value or undefined if not found.
+     * Retrieves cookie value.
      */
-    get(key: string, _tmp?: string): string | undefined;
+    get<T extends CookieValue = CookieValue>(key: string, _tmp?: string): T | undefined;
 
     /**
-     * Creates or updates a cookie.
-     * @param key The cookie name.
-     * @param value The cookie value.
-     * @param opts Optional cookie settings.
-     * @returns True if the cookie was set successfully.
+     * Creates or updates cookie.
      */
-    set(key: string, value: string, opts?: CookieOptions): boolean;
+    set(key: string, value: CookieValue, opts?: CookieOptions): boolean;
 
     /**
-     * Removes a cookie by setting its expiration to a past date.
-     * @param key The name of the cookie.
-     * @param path Optional path (default: '/').
-     * @param domain Optional domain.
-     * @returns True if the cookie was removed successfully.
+     * Removes one cookie or all cookies when key is omitted.
      */
-    remove(key: string, path?: string, domain?: string): boolean;
+    remove(key?: string, path?: string, domain?: string): boolean;
 
     /**
-     * Checks whether a cookie exists.
-     * @param key The cookie name.
-     * @param _tmp Optional unparsed cookie string.
-     * @returns True if the cookie exists, false otherwise.
+     * Checks whether cookie exists.
      */
     has(key: string, _tmp?: string): boolean;
 
     /**
-     * Returns an array of all cookie names.
-     * @returns An array of cookie keys.
+     * Returns all readable cookie names.
      */
     keys(): string[];
 
     /**
-     * Sends cookies to the server via XHR.
-     * @param cb Optional callback invoked with (err, response).
+     * Sends cookies to server via fetch callback API.
      */
-    send(cb?: (err?: Meteor.Error, response?: Response) => void): void;
+    send(cb?: (err?: MeteorError, response?: Response) => void): void;
 
     /**
-     * Asynchronously sends cookies to the server via XHR.
-     * @returns A promise that resolves to a Response.
+     * Sends cookies to server via fetch promise API.
      */
     sendAsync(): Promise<Response>;
   }
 
   /**
-   * Main Cookies class.
-   *
-   * Extends CookiesCore with additional middleware integration
-   * for server-side usage.
+   * Main Cookies class with server middleware integration.
    */
   export class Cookies extends CookiesCore {
     constructor(opts?: CookiesOptions);
 
     /**
-     * Returns a middleware function for integrating with a server.
-     * @returns A middleware function with signature (req, res, next) => void.
-     * @throws {Meteor.Error} If used on the client.
+     * Returns Connect-style middleware.
      */
-    middleware(): (
-      req: IncomingMessage,
-      res: ServerResponse,
-      next: () => void
-    ) => void | Promise<void>;
+    middleware(): CookieMiddleware;
+
+    /**
+     * Unregisters hooks, callbacks, and middleware state for this instance.
+     */
+    destroy(): boolean;
+  }
+}
+
+declare module 'http' {
+  interface IncomingMessage {
+    Cookies?: import('meteor/ostrio:cookies').CookiesCore;
+  }
+
+  interface ServerResponse {
+    req?: IncomingMessage;
   }
 }

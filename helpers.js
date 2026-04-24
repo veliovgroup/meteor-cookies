@@ -1,5 +1,6 @@
 const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
-const isTypedRegEx = /false|true|null/;
+const isTypedRegEx = /^(false|true|null)$/;
+const cookiePairStartRegExp = /^[^=;,]+=/;
 
 /**
  * @function
@@ -63,6 +64,31 @@ export const isFunction = (obj) => {
   }
   const type = Object.prototype.toString.call(obj);
   return type === '[object Function]' || type === '[object AsyncFunction]';
+};
+
+/**
+ * @function
+ * @private
+ * @name isRegExp
+ * @param {unknown} obj
+ * @returns {boolean}
+ * @summary Check if `obj` is RegExp
+ */
+export const isRegExp = (obj) => {
+  return Object.prototype.toString.call(obj) === '[object RegExp]';
+};
+
+/**
+ * @function
+ * @private
+ * @name hasOwn
+ * @param {object} obj
+ * @param {string} key
+ * @returns {boolean}
+ * @summary Safely check if `obj` has own `key`
+ */
+export const hasOwn = (obj, key) => {
+  return Object.prototype.hasOwnProperty.call(obj, key);
 };
 
 /**
@@ -155,7 +181,6 @@ const customUnescape = (str) => {
 const decode = decodeURIComponent;
 const encode = encodeURIComponent;
 const cookieSplitRegExp = /; */;
-const setCookieSplitRegExp = /, */;
 
 /**
  * RegExp to match field-content in RFC 7230 sec 3.2
@@ -165,6 +190,51 @@ const setCookieSplitRegExp = /, */;
  * obs-text      = %x80-FF
  */
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/;
+
+/**
+ * @function
+ * @name isCookiePairStart
+ * @param {string} str
+ * @param {number} index
+ * @returns {boolean}
+ * @summary Check if `str` starts with Set-Cookie pair at `index`
+ * @private
+ */
+const isCookiePairStart = (str, index) => {
+  let pos = index;
+  while (str[pos] === ' ') {
+    pos++;
+  }
+  return cookiePairStartRegExp.test(str.slice(pos));
+};
+
+/**
+ * @function
+ * @name splitSetCookieString
+ * @param {string} str
+ * @returns {string[]}
+ * @summary Split combined Set-Cookie header without splitting Expires date commas
+ * @private
+ */
+const splitSetCookieString = (str) => {
+  const cookies = [];
+  let start = 0;
+  let inQuotes = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (!inQuotes && char === ',' && isCookiePairStart(str, i + 1)) {
+      cookies.push(str.slice(start, i));
+      start = i + 1;
+    }
+  }
+
+  cookies.push(str.slice(start));
+  return cookies;
+};
 
 /**
  * @function
@@ -204,7 +274,7 @@ export const parse = (str, options) => {
   let key;
   let eqIndx;
 
-  str.split(opt.setCookie ? setCookieSplitRegExp : cookieSplitRegExp).forEach((_pair) => {
+  (opt.setCookie ? splitSetCookieString(str) : str.split(cookieSplitRegExp)).forEach((_pair) => {
     let pair = _pair;
     if (opt.setCookie) {
       pair = pair.split(cookieSplitRegExp)[0];
@@ -264,7 +334,7 @@ export const antiCircular = (_obj) => {
  * @returns { cookieString: string, sanitizedValue: unknown }
  * @summary
  * Serialize data into a cookie header.
- * Serialize the a name value pair into a cookie string suitable for
+ * Serialize a name value pair into a cookie string suitable for
  * http headers. An optional options object specified cookie parameters.
  * serialize('foo', 'bar', { httpOnly: true }) => "foo=bar; httpOnly"
  */
