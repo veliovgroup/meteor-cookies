@@ -13,6 +13,11 @@
     "@zodern/mtest": "^0.5.1",
     "tsd": "^0.33.0"
   },
+  "overrides": {
+    "@zodern/mtest": {
+      "puppeteer": "^24.15.0"
+    }
+  },
   "tsd": {
     "files": [
       "index.test-d.ts"

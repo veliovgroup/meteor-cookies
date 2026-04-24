@@ -29,9 +29,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-22-
 
-      # we use mtest to run tinytest headless
-      - run: npm install -g mtest
-
       - name: Setup meteor
         uses: meteorengineer/setup-meteor@v3
         with:
