@@ -1,4 +1,4 @@
-const isStringifiedRegEx = /JSON\.parse\((.*)\)/;
+const isStringifiedRegEx = /^JSON\.parse\((.*)\)$/;
 const isTypedRegEx = /^(false|true|null)$/;
 const cookiePairStartRegExp = /^[^=;,]+=/;
 
@@ -100,10 +100,15 @@ export const hasOwn = (obj, key) => {
  * @summary Clone `obj` if `obj` is Object or Array
  */
 export const clone = (obj) => {
-  if (!isObject(obj)) {
-    return obj;
+  if (isArray(obj)) {
+    return [...obj];
   }
-  return isArray(obj) ? [...obj] : { ...obj };
+
+  if (isObject(obj)) {
+    return { ...obj };
+  }
+
+  return obj;
 };
 
 /**
@@ -268,7 +273,7 @@ export const parse = (str, options) => {
   if (typeof str !== 'string') {
     throw new Meteor.Error(404, 'argument str must be a string');
   }
-  const obj = {};
+  const obj = Object.create(null);
   const opt = options || { setCookie: false };
   let val;
   let key;
@@ -292,7 +297,7 @@ export const parse = (str, options) => {
       val = val.slice(1, -1);
     }
 
-    if (void 0 === obj[key]) {
+    if (!hasOwn(obj, key)) {
       obj[key] = tryDecode(val, (opt.decode || decode));
     }
   });
@@ -340,6 +345,7 @@ export const antiCircular = (_obj) => {
  */
 export const serialize = (key, val, opt = {}) => {
   let name;
+  const options = isObject(opt) ? opt : {};
 
   if (!fieldContentRegExp.test(key)) {
     name = customEscape(key);
@@ -366,51 +372,51 @@ export const serialize = (key, val, opt = {}) => {
 
   const pairs = [`${name}=${value}`];
 
-  if (isNumber(opt.maxAge)) {
-    pairs.push(`Max-Age=${opt.maxAge}`);
+  if (isNumber(options.maxAge)) {
+    pairs.push(`Max-Age=${options.maxAge}`);
   }
 
-  if (opt.domain && typeof opt.domain === 'string') {
-    if (!fieldContentRegExp.test(opt.domain)) {
+  if (options.domain && typeof options.domain === 'string') {
+    if (!fieldContentRegExp.test(options.domain)) {
       throw new Meteor.Error(404, 'option domain is invalid');
     }
-    pairs.push(`Domain=${opt.domain}`);
+    pairs.push(`Domain=${options.domain}`);
   }
 
-  if (opt.path && typeof opt.path === 'string') {
-    if (!fieldContentRegExp.test(opt.path)) {
+  if (options.path && typeof options.path === 'string') {
+    if (!fieldContentRegExp.test(options.path)) {
       throw new Meteor.Error(404, 'option path is invalid');
     }
-    pairs.push(`Path=${opt.path}`);
+    pairs.push(`Path=${options.path}`);
   } else {
     pairs.push('Path=/');
   }
 
-  opt.expires = opt.expires || opt.expire || false;
-  if (opt.expires === Infinity) {
+  const expires = hasOwn(options, 'expires') ? options.expires : options.expire;
+  if (expires === Infinity) {
     pairs.push('Expires=Fri, 31 Dec 9999 23:59:59 GMT');
-  } else if (opt.expires instanceof Date) {
-    pairs.push(`Expires=${opt.expires.toUTCString()}`);
-  } else if (opt.expires === 0) {
+  } else if (expires instanceof Date && !Number.isNaN(expires.valueOf())) {
+    pairs.push(`Expires=${expires.toUTCString()}`);
+  } else if (expires === 0) {
     pairs.push('Expires=0');
-  } else if (isNumber(opt.expires)) {
-    pairs.push(`Expires=${(new Date(opt.expires)).toUTCString()}`);
+  } else if (isNumber(expires) && isFinite(expires)) {
+    pairs.push(`Expires=${(new Date(expires)).toUTCString()}`);
   }
 
-  if (opt.httpOnly) {
+  if (options.httpOnly) {
     pairs.push('HttpOnly');
   }
 
-  if (opt.secure) {
+  if (options.secure) {
     pairs.push('Secure');
   }
 
-  if (opt.partitioned) {
+  if (options.partitioned) {
     pairs.push('Partitioned');
   }
 
-  if (opt.priority) {
-    const priority = typeof opt.priority === 'string' ? opt.priority.toLowerCase() : undefined;
+  if (options.priority) {
+    const priority = typeof options.priority === 'string' ? options.priority.toLowerCase() : void 0;
     switch (priority) {
     case 'low':
       pairs.push('Priority=Low');
@@ -422,16 +428,16 @@ export const serialize = (key, val, opt = {}) => {
       pairs.push('Priority=High');
       break;
     default:
-      Meteor._debug(`[ostrio:cookies] [serialize] Cookie "${key}" has invalid value for "priority" option: "${opt.priority}" and was ignored`);
+      Meteor._debug(`[ostrio:cookies] [serialize] Cookie "${key}" has invalid value for "priority" option: "${options.priority}" and was ignored`);
     }
   }
 
-  if (opt.firstPartyOnly) {
+  if (options.firstPartyOnly) {
     pairs.push('First-Party-Only');
   }
 
-  if (opt.sameSite) {
-    pairs.push(opt.sameSite === true ? 'SameSite' : `SameSite=${opt.sameSite}`);
+  if (options.sameSite) {
+    pairs.push(options.sameSite === true ? 'SameSite' : `SameSite=${options.sameSite}`);
   }
 
   return { cookieString: pairs.join('; '), sanitizedValue };
