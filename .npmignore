@@ -12,6 +12,7 @@
 .versions
 node_modules
 npm-debug.log*
+index.test-d.ts
 package.js
 tests
 tests/*

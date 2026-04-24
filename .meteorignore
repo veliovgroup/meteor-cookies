@@ -7,6 +7,8 @@
 .DS_Store
 .eslintcache
 .eslintrc
+package-lock.json
+package.json
 node_modules
 AGENTS.md
 CHANGELOG.md
@@ -16,6 +18,7 @@ HISTORY.md
 LICENCE
 LICENSE
 README.md
+index.test-d.ts
 meteor.md
 tests
 tests/*
