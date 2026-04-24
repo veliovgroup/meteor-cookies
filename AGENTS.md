@@ -19,6 +19,53 @@ See [`.agents/ostrio-cookies-skill.md`](.agents/ostrio-cookies-skill.md) for:
 - **Tests**: Run `meteor test-packages ./` after changes. 99.9% coverage.
 - **Docs**: Sync README examples, FAQ (Cordova, middleware order), API notes.
 - **PRs/Reviews**: Check singleton, destroy(), security attrs (sameSite, partitioned, priority), TS, tests.
+- **Indentation:** 2 spaces.
+- Use **single quotes** for strings.
+- **Prefer simple ES classes** for cohesive state/services when they clarify lifecycle (e.g. a small data service with start/stop).
+- Use **small pure functions** for transforms, formatting, and validation.
+- **Performance**: favor O(n) single passes, avoid repeated work and heavy loops, cache derived values when dependencies are narrow.
+- Always end line with semicolon `;`.
+- Prefer `void 0` to `undefined` where applicable, like `return void 0`.
+- Prefer functions defined as variable to "named functions" where applicable.
+
+### JS Style example
+
+```js
+const string = 'string value';
+const object = {
+  key: string,
+};
+
+const complexObject = {
+  key: string,
+  array: ['one', 'two', 'three'],
+  date: new Date(),
+  timestamp: Date.now(),
+  arrayWithObjects: [{
+    key: {
+      keyLevel2: false,
+    },
+    key2: {
+      array: [{
+        keyLevel3: true,
+      }]
+    }
+  }, {
+    keySecondObject: {
+      keyLevel2: true,
+      otherKeyLevel2: 'string - lorem ipsium',
+    }
+  }],
+};
+
+const sayName = (name) => {
+  if (!name) {
+    return void 0;
+  }
+
+  return `Your name is ${name}`;
+};
+```
 
 ## Edit rules and flow
 - Introduce changes, validate, run tests.
