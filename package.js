@@ -1,13 +1,13 @@
 Package.describe({
   name: 'ostrio:cookies',
-  version: '2.9.1',
+  version: '2.9.1,
   summary: 'Isomorphic bulletproof Server, Client, Browser, and Cordova cookies',
   git: 'https://github.com/veliovgroup/Meteor-Cookies',
   documentation: 'README.md'
 });
 
 Package.onUse((api) => {
-  api.versionsFrom(['1.4', '3.0.1']);
+  api.versionsFrom(['1.4', '3.0.1', '3.4']);
   api.use('ecmascript', ['client', 'server']);
   api.use('webapp', 'server');
   api.use('fetch@0.1.6', 'client');
@@ -20,9 +20,8 @@ Package.onUse((api) => {
 });
 
 Package.onTest((api) => {
-  api.use('blaze-html-templates');
   api.use('tinytest');
-  api.use(['ecmascript', 'http', 'ostrio:cookies@2.9.1'], ['client', 'server']);
+  api.use(['ecmascript', 'http', 'random', 'zodern:types', 'typescript', 'ostrio:cookies@2.9.1'], ['client', 'server']);
   api.use(['ejson', 'webapp'], 'server');
   api.addFiles('tests/both.js', ['client', 'server']);
   api.addFiles('tests/server.js', 'server');
