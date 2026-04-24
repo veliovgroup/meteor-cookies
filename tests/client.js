@@ -1,4 +1,4 @@
-import { Cookies } from 'meteor/ostrio:cookies';
+import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
 import { antiCircular, isArray, isObject } from '../helpers';
 
 const circularObj = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
@@ -57,6 +57,32 @@ Tinytest.add('Class - Cookies instance - __prepareSendData generates query corre
 
   test.isTrue(typeof path === 'string' && path.length > 0, 'Path is generated');
   test.isTrue(query.startsWith('?___cookies___='), 'Query string is generated correctly');
+});
+
+Tinytest.add('Class - Cookies instance - __prepareSendData serializes complex query cookies', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: false, allowQueryStringCookies: true });
+  const origiscordova = Meteor.isCordova;
+  Meteor.isCordova = true;
+
+  cookiesInstance.cookies = {
+    'ключ': 'значение',
+    objectValue: { nested: true },
+    arrayValue: [true, 'value', { nested: 1 }],
+    booleanValue: false,
+    nullValue: null
+  };
+  const { query } = cookiesInstance.__prepareSendData();
+  Meteor.isCordova = origiscordova;
+
+  const sentCookies = new CookiesCore({
+    _cookies: decodeURIComponent(query.replace('?___cookies___=', ''))
+  });
+
+  test.equal(sentCookies.get('ключ'), 'значение', 'Unicode key and value round-trip');
+  test.equal(sentCookies.get('objectValue'), { nested: true }, 'Object value round-trips');
+  test.equal(sentCookies.get('arrayValue'), [true, 'value', { nested: 1 }], 'Array value round-trips');
+  test.equal(sentCookies.get('booleanValue'), false, 'Boolean value round-trips');
+  test.equal(sentCookies.get('nullValue'), null, 'Null value round-trips');
 });
 
 const cookies = new Cookies();

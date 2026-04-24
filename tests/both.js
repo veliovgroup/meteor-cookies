@@ -1,5 +1,5 @@
 import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
-import { isFunction } from '../helpers';
+import { clone, deserialize, isFunction, parse, serialize } from '../helpers';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
 
@@ -85,3 +85,69 @@ Tinytest.add('Class - CookiesCore instance', (test) => {
   test.include(cookiesCoreInstance, 'cookies');
 });
 
+Tinytest.add('helpers: clone returns separate shallow arrays and objects', (test) => {
+  const array = ['one', 'two'];
+  const object = { key: 'value' };
+  const arrayClone = clone(array);
+  const objectClone = clone(object);
+
+  test.equal(arrayClone, array, 'Array clone has same values');
+  test.isTrue(arrayClone !== array, 'Array clone is a separate array');
+  test.equal(objectClone, object, 'Object clone has same values');
+  test.isTrue(objectClone !== object, 'Object clone is a separate object');
+});
+
+Tinytest.add('helpers: parse supports Object prototype cookie names', (test) => {
+  const cookies = parse('__proto__=proto-value; constructor=constructor-value; hasOwnProperty=own-value');
+
+  test.equal(Object.getPrototypeOf(cookies), null, 'Parsed cookies use null prototype');
+  test.equal(cookies.__proto__, 'proto-value', '__proto__ cookie is readable');
+  test.equal(cookies.constructor, 'constructor-value', 'constructor cookie is readable');
+  test.equal(cookies.hasOwnProperty, 'own-value', 'hasOwnProperty cookie is readable');
+});
+
+Tinytest.add('helpers: deserialize only parses exact serialized JSON wrapper', (test) => {
+  const plainString = 'prefix JSON.parse({"safe":true}) suffix';
+  const serialized = parse(serialize('json', { safe: true }).cookieString).json;
+
+  test.equal(deserialize(plainString), plainString, 'Embedded JSON.parse text stays string');
+  test.equal(deserialize(serialized), { safe: true }, 'Serialized JSON wrapper parses to object');
+});
+
+Tinytest.add('helpers: serialize preserves expiry options without mutating caller input', (test) => {
+  const options = {
+    expires: 0,
+    expire: Infinity,
+    path: '/custom'
+  };
+  const { cookieString } = serialize('expiry', 'value', options);
+
+  test.include(cookieString, 'Expires=0', 'Explicit expires: 0 is preserved');
+  test.notInclude(cookieString, '9999', 'expires takes precedence over expire alias');
+  test.equal(options, {
+    expires: 0,
+    expire: Infinity,
+    path: '/custom'
+  }, 'Options object is not mutated');
+});
+
+Tinytest.add('helpers: serialize ignores invalid expires values', (test) => {
+  const invalidNumber = serialize('invalidNumber', 'value', { expires: NaN }).cookieString;
+  const invalidDate = serialize('invalidDate', 'value', { expires: new Date(NaN) }).cookieString;
+
+  test.notInclude(invalidNumber, 'Invalid Date', 'NaN expires does not emit invalid date');
+  test.notInclude(invalidDate, 'Invalid Date', 'Invalid Date expires does not emit invalid date');
+  test.notInclude(invalidNumber, 'Expires=', 'NaN expires is ignored');
+  test.notInclude(invalidDate, 'Expires=', 'Invalid Date expires is ignored');
+});
+
+Tinytest.add('Class - CookiesCore get() and has() respect empty temporary cookie string', (test) => {
+  const cookies = new CookiesCore({
+    _cookies: {
+      session: 'stored'
+    }
+  });
+
+  test.isUndefined(cookies.get('session', ''), 'Empty temporary cookie string does not fall back to instance cookies');
+  test.isFalse(cookies.has('session', ''), 'Empty temporary cookie string has no instance cookies');
+});

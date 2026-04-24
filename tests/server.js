@@ -2,7 +2,7 @@ import { WebApp } from 'meteor/webapp';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
 import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
-import { antiCircular, isArray, isObject } from '../helpers';
+import { antiCircular, isArray, isObject, serialize } from '../helpers';
 
 const circularObj = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
 circularObj.self = circularObj;
@@ -186,6 +186,77 @@ Tinytest.addAsync('Server: Cordova origin allows query-string cookies', async (t
   test.equal(response.getHeader('Access-Control-Allow-Origin'), 'http://localhost:12000', 'Cordova origin is allowed');
   test.equal(response.getHeader('Access-Control-Allow-Credentials'), 'true', 'Credentials header is set');
   test.equal(response.getHeader('Set-Cookie'), ['cordovaCookie=cordovaValue; Path=/'], 'Query string cookie is set');
+  test.isTrue(response.ended, 'Response ended');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: Cordova query-string cookies parse from request path with complex values', async (test) => {
+  const response = mockResponse();
+  const queryCookies = [
+    serialize('ключ', 'значение').cookieString.split('; ')[0],
+    serialize('objectValue', { nested: true }).cookieString.split('; ')[0],
+    serialize('arrayValue', [true, 'value', { nested: 1 }]).cookieString.split('; ')[0],
+    serialize('booleanValue', false).cookieString.split('; ')[0],
+    serialize('nullValue', null).cookieString.split('; ')[0]
+  ].join('; ');
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true
+  });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {
+      origin: 'http://localhost:12000'
+    },
+    _parsedUrl: {
+      path: `/___cookie___/set?___cookies___=${encodeURIComponent(queryCookies)}`
+    }
+  }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+
+  const cookies = new CookiesCore({
+    _cookies: response.getHeader('Set-Cookie').join(', '),
+    setCookie: true
+  });
+
+  test.equal(response.getHeader('Content-Type'), 'text/plain', 'Endpoint uses text/plain content type');
+  test.equal(cookies.get('ключ'), 'значение', 'Unicode key and value round-trip');
+  test.equal(cookies.get('objectValue'), { nested: true }, 'Object value round-trips');
+  test.equal(cookies.get('arrayValue'), [true, 'value', { nested: 1 }], 'Array value round-trips');
+  test.equal(cookies.get('booleanValue'), false, 'Boolean value round-trips');
+  test.equal(cookies.get('nullValue'), null, 'Null value round-trips');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: malformed Cordova query-string cookies are ignored', async (test) => {
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true
+  });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {
+      origin: 'http://localhost:12000'
+    },
+    query: {
+      ___cookies___: '%E0%A4%A'
+    },
+    _parsedUrl: {
+      path: '/___cookie___/set'
+    }
+  }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+
+  test.isUndefined(response.getHeader('Set-Cookie'), 'Malformed query-string cookie payload is ignored');
   test.isTrue(response.ended, 'Response ended');
   cookiesInstance.destroy();
 });
