@@ -14,7 +14,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 - 🖥 Consistent API across *Server* and *Client* environments
 - 📱 Compatible with *Cordova*, *Browser*, *Meteor-Desktop*, and other client platforms
 - ㊗️ Full Unicode support for cookie values
-- 👨‍💻 Supports `String`, `Array`, `Object`, and `Boolean` as cookie value types
+- 👨‍💻 Supports `String`, `Number`, `Array`, `Object`, `Boolean`, and `null` as cookie value types
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok)
 - 📦 Shipped with TypeScript [types](https://github.com/veliovgroup/meteor-cookies/blob/master/index.d.ts)
 - 📦 Looking for persistent *Client* (Browser) storage? Try the [`ClientStorage` package](https://github.com/veliovgroup/Client-Storage#persistent-client-browser-storage).
@@ -33,7 +33,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
   - [`.send()`](#send) – Sync cookies with the server
   - [`.sendAsync()`](#sendasync) – Sync cookies asynchronously
   - [`.middleware()`](#middleware) – Register cookie middleware manually
-  - [`new CookieCore()` constructor](#new-cookiescore-constructor) – Low-level class that can be used to directly parse and manage cookies
+  - [`new CookiesCore()` constructor](#new-cookiescore-constructor) – Low-level class that can be used to directly parse and manage cookies
 - [Examples](#examples)
   - [Client Usage](#example-client-usage)
   - [Server Usage](#example-server-usage)
@@ -83,7 +83,7 @@ See [FAQ](#faq) for more tips
 > [!IMPORTANT]
 > **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method.
 >
-> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All consequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
+> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All subsequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
 
 ### `new Cookies()` Constructor
 
@@ -287,7 +287,7 @@ cookies.destroy(); // false — returns `false` as instance was already destroye
 **Supported CookiesCoreOptions:**
 
 - `_cookies` {*string | CookieDict*} - Cookies string from `document.cookie`, `Set-Cookie` header, or `{ [key: string]: unknown }` Object
-- `setCookie` {*boolean*} - Set to `true` when `_cookies` option derivative of `Set-Cookie` header
+- `setCookie` {*boolean*} - Set to `true` when `_cookies` option derives from `Set-Cookie` header
 - `response` {*ServerResponse*} - HTTP server response object
 - `TTL` {*number | false*} - Default cookies expiration time (max-age) in milliseconds. If false, the cookie lasts for the session
 - `runOnServer` {*boolean*} - Client only. If `true` — enables `send` and `sendAsync` from client
@@ -407,7 +407,7 @@ WebApp.connectHandlers.use((req, res, next) => {
   if (req.Cookies.has('checkout-session')) {
     const sessionId = req.Cookies.get('checkout-session');
     // CHECK IF CHECKOUT SESSION IS VALID
-    if (isCheoutSessionValid(sessionId)) {
+    if (isCheckoutSessionValid(sessionId)) {
       // FORCE-REDIRECT USER TO CHECKOUT IF SESSION IS VALID
       res.statusCode = 302;
       res.setHeader('Location', `https://example.com?chsessid=${sessionId}`);
@@ -445,7 +445,7 @@ sessionCookies.destroy();
 
 ### Example: Set and read cookies based on URL
 
-Often cookies logic depends from URL it was called from. Access request details on `handler` callback using `cookies.response.req.url` {*IncomingMessage*} object:
+Often cookies logic depends on URL it was called from. Access request details on `handler` callback using `cookies.response.req.url` {*IncomingMessage*} object:
 
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';
@@ -503,11 +503,17 @@ if (Meteor.isServer) {
 ### Meteor/Tinytest
 
 ```shell
-# Default
-meteor test-packages ./
+# Default, headless Tinytest runner
+npm test
 
-# With a custom port
-meteor test-packages ./ --port 8888
+# Direct command
+mtest --package ./ --port=8888 --once
+
+# Type definitions
+npm run test:types
+
+# Browser fallback
+meteor test-packages ./ --once --driver-package test-in-console
 ```
 
 ## Support Our Open Source Contributions
