@@ -20,6 +20,12 @@ See [`.agents/ostrio-cookies-skill.md`](.agents/ostrio-cookies-skill.md) for:
 - **Docs**: Sync README examples, FAQ (Cordova, middleware order), API notes.
 - **PRs/Reviews**: Check singleton, destroy(), security attrs (sameSite, partitioned, priority), TS, tests.
 
+## Edit rules and flow
+- Introduce changes, validate, run tests.
+- Update TS definitions if absolutely necessary after introduced changes.
+- Update documentation if necessary adding new features or changing old ones.
+- In case of major updates — Add migration instructions to package documentation.
+
 This file excluded from Meteor publish via .meteorignore. Skill in .agents/ also excluded.
 
 Follow create-rule and create-skill patterns where applicable for future extensions.
