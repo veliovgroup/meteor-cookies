@@ -2,7 +2,7 @@ import { Cookies } from 'meteor/ostrio:cookies';
 import { antiCircular, isArray, isObject } from '../helpers';
 
 const circularObj = {key: '1', key2: {key1: 1, key2: false, key3: [true, false]}};
-circularObj.slef = circularObj;
+circularObj.self = circularObj;
 
 const circularArr = [true, false, null, {key1: 1, key2: false, key3: [true, false]}, [1, 2, 3, '4', '5']];
 circularArr.push(circularArr);
@@ -188,7 +188,7 @@ Tinytest.addAsync('cookies: send(callback) - add cookie on server', (test, next)
       // Verify that the response is a valid fetch Response object.
       test.isTrue(response.ok, 'Expected response.ok to be true');
       test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
-      test.include(document.cookie, 'TEST-ADD-FROM-SERVER', 'document.cookie still has TEST-ADD-FROM-SERVER after receiving server respons');
+      test.include(document.cookie, 'TEST-ADD-FROM-SERVER', 'document.cookie still has TEST-ADD-FROM-SERVER after receiving server response');
       test.include(document.cookie, 'ADDED-FROM-SERVER', 'document.cookie ADDED-FROM-SERVER was added by server');
       test.isTrue(cookies.has('ADDED-FROM-SERVER'), 'Has ADDED-FROM-SERVER added by server');
       test.isTrue(cookies.get('ADDED-FROM-SERVER'), 'ADDED-FROM-SERVER value is true');
@@ -245,7 +245,7 @@ Tinytest.addAsync('cookies: sendAsync - add cookie on server', async (test) => {
     // Verify that the response is a valid fetch Response object.
     test.isTrue(response.ok, 'Expected response.ok to be true');
     test.equal(typeof response.text, 'function', 'Expected response.text() to be a function');
-    test.include(document.cookie, 'TEST-ADD-FROM-SERVER', 'document.cookie still has TEST-ADD-FROM-SERVER after receiving server respons');
+    test.include(document.cookie, 'TEST-ADD-FROM-SERVER', 'document.cookie still has TEST-ADD-FROM-SERVER after receiving server response');
     test.include(document.cookie, 'ADDED-FROM-SERVER', 'document.cookie ADDED-FROM-SERVER was added by server');
     test.isTrue(cookies.has('ADDED-FROM-SERVER'), 'Has ADDED-FROM-SERVER added by server');
     test.isTrue(cookies.get('ADDED-FROM-SERVER'), 'ADDED-FROM-SERVER value is true');
