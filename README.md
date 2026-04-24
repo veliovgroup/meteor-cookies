@@ -96,7 +96,7 @@ Create a new instance of `Cookies` (available on both *Client* and *Server*).
 **Available CookiesOptions:**
 
 - `opts.auto` {*boolean*} – [Server] Auto-bind as `req.Cookies` (default: `true`)
-- `opts.handler` {*function*} – [Server] Custom middleware handler; receives the `Cookies` instance
+- `opts.handler` {*function*} – [Server] Custom middleware handler; receives a `CookiesCore` instance
 - `opts.onCookies` {*function*} – [Server] Callback triggered after `.send()` or `.sendAsync()` is called and the cookies are received by the server. *(Note: available only if `auto` is `true`.)*
 - `opts.TTL` {*number* | *boolean*} – Default expiration time (max-age) in milliseconds. Set to `false` for session cookies
 - `opts.runOnServer` {*boolean*} – Set to `false` to disable server usage (default: `true`)
@@ -146,7 +146,7 @@ cookies.get('age'); // returns 25
 
 - `opts.expires` {*number* | *Date* | *Infinity*}: Cookie expiration
 - `opts.maxAge` {*number*}: Maximum age in seconds
-- `opts.path` {*string*}: Cookie path (default: current path)
+- `opts.path` {*string*}: Cookie path (default: `/`)
 - `opts.domain` {*string*}: Cookie domain
 - `opts.secure` {*boolean*}: Transmit only over HTTPS
 - `opts.httpOnly` {*boolean*}: Inaccessible to client-side JavaScript
@@ -175,7 +175,7 @@ cookies.set('age', 25, {
 **Arguments:**
 
 - `key` {*string*} - The name of the cookie to create/overwrite
-- `path` {*string*} - [Optional] The path from where the cookie was readable. E.g., "/", "/mydir"; if not specified, defaults to the current path of the current document location (string or null). The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, [read more](https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter)
+- `path` {*string*} - [Optional] The path from where the cookie was readable. E.g., "/", "/mydir"; if not specified, defaults to `/`. The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, [read more](https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter)
 - `domain` {*string*} - [Optional] The domain from where the cookie was readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
 
 ```js
@@ -213,7 +213,7 @@ const cookieKeys = cookies.keys(); // string[] (e.g., ['locale', 'country', 'gen
 
 #### `.send()`
 
-*(Client only)* Synchronously send all current cookies to the server via XHR
+*(Client only)* Send all current cookies to the server via `fetch` and callback
 
 **Arguments:**
 
@@ -233,7 +233,7 @@ cookies.send((error, response) => {
 
 #### `.sendAsync()`
 
-*(Client only)* Asynchronously send all current cookies to the server via XHR
+*(Client only)* Send all current cookies to the server via `fetch` and `Promise`
 
 ```js
 const response = await cookies.sendAsync();
@@ -254,7 +254,7 @@ import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies({
   auto: false,
   handler(cookiesInstance) {
-    // Custom processing with cookiesInstance (of type Cookies)
+    // Custom processing with cookiesInstance (of type CookiesCore)
   }
 });
 
@@ -299,16 +299,16 @@ cookies.destroy(); // false — returns `false` as instance was already destroye
 > `CookiesCore` instance has the same methods as `Cookies` class except `.destroy()` and `.middleware()`
 
 ```js
+import { Meteor } from 'meteor/meteor';
+import { WebApp } from 'meteor/webapp';
 import { CookiesCore } from 'meteor/ostrio:cookies';
 
 if (Meteor.isServer) {
   // EXAMPLE SERVER USAGE
   WebApp.connectHandlers.use((request, response, next) => {
-    const headerCookies = response.headers.get('set-cookie');
     const cookies = new CookiesCore({
-      _cookies: headerCookies,
-      setCookie: true, // <- Switch cookie-parser to header mode
-      response: response,
+      _cookies: request.headers.cookie || '',
+      response,
     });
 
     // FOR EXAMPLE: CHECK SESSION EXPIRATION
@@ -322,6 +322,7 @@ if (Meteor.isServer) {
       // MARK USER AS NEW
       cookies.set('session-type', 'new-user');
     }
+    next();
   });
 }
 
@@ -355,7 +356,6 @@ Use `new Cookies()` on *Client* and *Server* separately or in the same file
 ### Example: Client Usage
 
 ```js
-import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
 const cookies = new Cookies();
 
@@ -374,7 +374,6 @@ console.log(cookies.get('locale')); // undefined
 ### Example: Server Usage
 
 ```js
-import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
 import { WebApp } from 'meteor/webapp';
 
@@ -396,8 +395,8 @@ WebApp.connectHandlers.use((req, res, next) => {
 Sometimes it is required to build temporary or separate logic based on Client's cookies. And to split logic between different modules and files
 
 ```js
-import { Meteor } from 'meteor/meteor';
 import { Cookies } from 'meteor/ostrio:cookies';
+import { WebApp } from 'meteor/webapp';
 
 // register default middleware that will handle requests and req.Cookies extension
 const globalCookies = new Cookies();
@@ -448,12 +447,14 @@ sessionCookies.destroy();
 Often cookies logic depends on URL it was called from. Access request details on `handler` callback using `cookies.response.req.url` {*IncomingMessage*} object:
 
 ```js
+import { Meteor } from 'meteor/meteor';
+import { Random } from 'meteor/random';
 import { Cookies } from 'meteor/ostrio:cookies';
 
 new Cookies({
   auto: false,
   async handler(cookies) {
-    const url = new URL(cookies.response.req.url);
+    const url = new URL(cookies.response.req.url, Meteor.absoluteUrl());
     switch (url.pathname) {
       case '/signup/create':
         // GET USER'S SELECTED PLAN ON SIGNUP
