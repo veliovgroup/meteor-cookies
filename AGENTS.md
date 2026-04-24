@@ -19,6 +19,8 @@ See [`.agents/ostrio-cookies-skill.md`](.agents/ostrio-cookies-skill.md) for:
 - **Tests**: Run `meteor test-packages ./` after changes. 99.9% coverage.
 - **Docs**: Sync README examples, FAQ (Cordova, middleware order), API notes.
 - **PRs/Reviews**: Check singleton, destroy(), security attrs (sameSite, partitioned, priority), TS, tests.
+
+## Code Style Rules
 - **Indentation:** 2 spaces.
 - Use **single quotes** for strings.
 - **Prefer simple ES classes** for cohesive state/services when they clarify lifecycle (e.g. a small data service with start/stop).
@@ -28,7 +30,7 @@ See [`.agents/ostrio-cookies-skill.md`](.agents/ostrio-cookies-skill.md) for:
 - Prefer `void 0` to `undefined` where applicable, like `return void 0`.
 - Prefer functions defined as variable to "named functions" where applicable.
 
-### JS Style example
+### JS Style Example
 
 ```js
 const string = 'string value';
