@@ -1,9 +1,13 @@
+.cursor
+.cursorignore
 .github
 .gitignore
 .npm
 .DS_Store
 .eslintcache
 .eslintrc
+node_modules
+AGENTS.md
 CHANGELOG.md
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
