@@ -441,8 +441,8 @@ Report vulnerabilities privately, see [SECURITY.md](https://github.com/veliovgro
 [badge-deps]: https://img.shields.io/badge/dependencies-0-brightgreen
 [badge-commit]: https://img.shields.io/github/last-commit/veliovgroup/Meteor-Cookies
 [commits-url]: https://github.com/veliovgroup/Meteor-Cookies/commits/master
-[badge-scorecard]: https://api.scorecard.dev/projects/github.com/veliovgroup/Meteor-Cookies/badge
-[scorecard-url]: https://scorecard.dev/viewer/?uri=github.com/veliovgroup/Meteor-Cookies
+[badge-scorecard]: https://api.scorecard.dev/projects/github.com/veliovgroup/meteor-cookies/badge
+[scorecard-url]: https://scorecard.dev/viewer/?uri=github.com/veliovgroup/meteor-cookies
 [badge-sponsor]: https://img.shields.io/github/sponsors/dr-dimitru?label=Sponsor
 [sponsor-url]: https://github.com/sponsors/dr-dimitru
 [badge-donate]: https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white
