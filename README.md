@@ -76,22 +76,9 @@ import { Cookies } from 'meteor/ostrio:cookies';
 ## API
 
 > [!NOTE]
-> On the *Server*, `req.Cookies.set()` adds a `Set-Cookie` header to the current response. The browser stores the cookie when the response arrives. A *Client* instance sees it after a page reload or after `send()` / `sendAsync()` resolves
+> On the *Server*, `new Cookies()` registers one middleware that sets `req.Cookies`, a `CookiesCore` instance. `req.Cookies.set()` adds a `Set-Cookie` header to the current response. A *Client* instance sees the new cookie after a page reload or after `send()` / `sendAsync()` resolves
 >
-> To make *Client* cookies available to server `onCookies` hooks without a page reload, use `sendAsync()` or `send()`
-
-
-> [!TIP]
-> **On the Server**: cookies are implemented as middleware that attaches a `CookiesCore` instance to the incoming request (accessible as `req.Cookies`). Ensure that the Cookies middleware is registered before other middleware and routes
->
-> **In `.meteor/packages`**: Place the `ostrio:cookies` package above all community packages, order of packages does matter in this file
-
-See [FAQ](#faq) for more tips
-
-> [!IMPORTANT]
-> **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method.
->
-> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All subsequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`. When the instance that owns the middleware is destroyed, another live instance takes it over
+> Many `new Cookies()` instances share that one middleware. See [docs/server.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#one-middleware-many-handlers)
 
 ### `new Cookies()` Constructor
 
@@ -105,7 +92,7 @@ Create a new instance of `Cookies` (available on both *Client* and *Server*).
 
 - `opts.auto` {*boolean*} – [Server] Auto-bind as `req.Cookies` (default: `true`)
 - `opts.handler` {*function*} – [Server] Custom middleware handler; receives a `CookiesCore` instance
-- `opts.onCookies` {*function*} – [Server] Callback triggered after `.send()` or `.sendAsync()` is called and the cookies are received by the server. *(Note: available only if `auto` is `true`.)*
+- `opts.onCookies` {*function*} – [Server] Callback triggered after `.send()` or `.sendAsync()` is called and the cookies are received by the server. Runs only in the auto-registered middleware, not in a manual `.middleware()`
 - `opts.TTL` {*number* | *boolean*} – Default expiration time (max-age) in milliseconds. Set to `false` for session cookies
 - `opts.runOnServer` {*boolean*} – Set to `false` to disable server usage (default: `true`)
 - `opts.allowQueryStringCookies` {*boolean*} – Allow passing cookies via query string (primarily for Cordova)
@@ -138,6 +125,8 @@ cookies.set('age', 25); // returns true
 cookies.get('age'); // returns 25
 ```
 
+Cookies store text. After a page reload, and on the *Server*, a number comes back as a string (`'25'`). `true`, `false`, `null`, objects, and arrays keep their type.
+
 ---
 
 #### `.set()`
@@ -147,12 +136,12 @@ cookies.get('age'); // returns 25
 **Arguments:**
 
 - `key` {*string*} – The cookie name
-- `value` {*string* | *number* | *boolean* | *object* | *array*} – The cookie value
+- `value` {*string* | *number* | *boolean* | *null* | *object* | *array*} – The cookie value
 - `opts` {*CookieOptions*} – Optional settings
 
 **Supported CookieOptions:**
 
-- `opts.expires` {*number* | *Date* | *Infinity*}: Cookie expiration. `0` creates a session cookie and overrides `TTL`
+- `opts.expires` {*number* | *Date* | *Infinity*}: Cookie expiration as a `Date` or a timestamp in milliseconds. `0` creates a session cookie and overrides `TTL`
 - `opts.maxAge` {*number*}: Maximum age in seconds
 - `opts.path` {*string*}: Cookie path (default: `/`)
 - `opts.domain` {*string*}: Cookie domain
@@ -182,7 +171,7 @@ cookies.set('age', 25, {
 
 **Arguments:**
 
-- `key` {*string*} - The name of the cookie to create/overwrite
+- `key` {*string*} - [Optional] The name of the cookie to remove
 - `path` {*string*} - [Optional] The path from where the cookie was readable. E.g., "/", "/mydir"; if not specified, defaults to `/`. The path must be absolute (see RFC 2965). For more information on how to use relative paths in this argument, [read more](https://developer.mozilla.org/en-US/docs/Web/API/document.cookie#Using_relative_URLs_in_the_path_parameter)
 - `domain` {*string*} - [Optional] The domain from where the cookie was readable. E.g., "example.com", ".example.com" (includes all subdomains) or "subdomain.example.com"; if not specified, defaults to the host portion of the current document location (string or null)
 
@@ -301,7 +290,7 @@ cookies.destroy(); // false — returns `false` as instance was already destroye
 - `runOnServer` {*boolean*} - Client only. If `true` — enables `send` and `sendAsync` from client
 - `allowQueryStringCookies` {*boolean*} - If true, allow passing cookies via query string (used primarily in Cordova)
 - `allowedCordovaOrigins` {*RegExp | boolean*} - A regular expression or boolean to allow cookies from specific origins
-- `opts.name` {*string*} - Sets `.NAME` property of *CookiesCore* instances, use it for instance identification, default `COOKIES_CORE`
+- `name` {*string*} - Sets `.NAME` property of *CookiesCore* instances, use it for instance identification, default `COOKIES_CORE`
 
 > [!NOTE]
 > `CookiesCore` instance has the same methods as `Cookies` class except `.destroy()` and `.middleware()`

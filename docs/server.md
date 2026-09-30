@@ -19,7 +19,7 @@
 Only one `Cookies` middleware runs at a time. Each `new Cookies({ handler, onCookies })` adds its callbacks to shared maps, and that one middleware calls them all.
 
 - `handler(cookies)` runs on every request, except `/___cookie___/set`.
-- `onCookies(cookies)` runs when the client calls `.send()` or `.sendAsync()`. It requires a registered middleware.
+- `onCookies(cookies)` runs when the client calls `.send()` or `.sendAsync()`. Only the auto-registered middleware serves `/___cookie___/set`. While a manual `.middleware()` owns the middleware, `onCookies` hooks don't run and `.send()` reaches your own routes.
 - `.destroy()` removes the instance's callbacks. If the instance owns the middleware, another live instance takes it over, preferring instances created with `auto: true`. With no live instances left, the next `new Cookies()` takes over.
 - Calling `.middleware()` while a middleware is registered logs a warning and returns a middleware that only calls `next()`.
 
