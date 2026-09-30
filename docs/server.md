@@ -29,7 +29,7 @@ Only one `Cookies` middleware runs at a time. Each `new Cookies({ handler, onCoo
 
 1. Rejects cross-site requests with `403` without running hooks. A request is accepted when its `Origin` matches `ROOT_URL`, `MOBILE_ROOT_URL`, `allowedCordovaOrigins`, or the request `Host`, or when it has no `Origin` and `Sec-Fetch-Site` isn't `cross-site` or `same-site`.
 2. Runs the `onCookies` hooks.
-3. Responds `200` with an empty `text/plain` body.
+3. Responds `200` with an empty `text/plain` body and `Cache-Control: no-store`, so proxies and CDNs don't cache the response or its `Set-Cookie` headers.
 
 The server doesn't echo request cookies back as `Set-Cookie`, because that would drop their original attributes (`HttpOnly`, `Secure`, `SameSite`, `Expires`). Cordova and Meteor-Desktop cookies sent in the query string are the exception, see [Cordova and Meteor-Desktop](./cordova.md).
 

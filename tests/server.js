@@ -439,6 +439,7 @@ Tinytest.addAsync('Server: endpoint accepts same-origin requests', async (test) 
     });
 
     test.equal(response.statusCode, 200, `Accepted: ${JSON.stringify(headers)}`);
+    test.equal(response.getHeader('Cache-Control'), 'no-store', 'Response is not cacheable');
   }
 
   // GLOBAL TEST HOOK ALSO RUNS; ONLY COUNT THIS INSTANCE

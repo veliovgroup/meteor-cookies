@@ -25,6 +25,8 @@ In v2 the endpoint returned every request cookie as `Set-Cookie: name=value; Pat
 
 Action: none, unless your code reads `Set-Cookie` from the `.send()` response.
 
+The endpoint response also has `Cache-Control: no-store`.
+
 ## Cordova and Meteor-Desktop cookie values are decoded once
 
 v2 decoded the `___cookies___` query parameter twice when Meteor's query parser had already decoded it. A value like `v%41` reached the server as `vA`. v3 keeps the value as the client set it.

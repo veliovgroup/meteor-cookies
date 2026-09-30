@@ -763,8 +763,10 @@ class Cookies extends CookiesCore {
         }
       }
 
-      await this.__execute(req, res, Cookies.__hooks);
+      // HOOKS RUN PER REQUEST; CACHED RESPONSE WOULD SKIP THEM AND REPLAY `Set-Cookie`
+      res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Type', 'text/plain');
+      await this.__execute(req, res, Cookies.__hooks);
       res.end();
     } else {
       req.Cookies = this.__getCookiesCore(req, res);
