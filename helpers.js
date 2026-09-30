@@ -1,6 +1,7 @@
 const isStringifiedRegEx = /^JSON\.parse\((.*)\)$/;
 const isTypedRegEx = /^(false|true|null)$/;
 const cookiePairStartRegExp = /^[^=;,]+=/;
+const cookieNameUnsafeRegExp = /[;=]/;
 
 /**
  * @function
@@ -347,7 +348,7 @@ export const serialize = (key, val, opt = {}) => {
   let name;
   const options = isObject(opt) ? opt : {};
 
-  if (!fieldContentRegExp.test(key)) {
+  if (!fieldContentRegExp.test(key) || cookieNameUnsafeRegExp.test(key)) {
     name = customEscape(key);
   } else {
     name = key;
@@ -372,19 +373,19 @@ export const serialize = (key, val, opt = {}) => {
 
   const pairs = [`${name}=${value}`];
 
-  if (isNumber(options.maxAge)) {
-    pairs.push(`Max-Age=${options.maxAge}`);
+  if (isNumber(options.maxAge) && isFinite(options.maxAge)) {
+    pairs.push(`Max-Age=${Math.floor(options.maxAge)}`);
   }
 
   if (options.domain && typeof options.domain === 'string') {
-    if (!fieldContentRegExp.test(options.domain)) {
+    if (!fieldContentRegExp.test(options.domain) || options.domain.includes(';')) {
       throw new Meteor.Error(404, 'option domain is invalid');
     }
     pairs.push(`Domain=${options.domain}`);
   }
 
   if (options.path && typeof options.path === 'string') {
-    if (!fieldContentRegExp.test(options.path)) {
+    if (!fieldContentRegExp.test(options.path) || options.path.includes(';')) {
       throw new Meteor.Error(404, 'option path is invalid');
     }
     pairs.push(`Path=${options.path}`);
@@ -397,9 +398,7 @@ export const serialize = (key, val, opt = {}) => {
     pairs.push('Expires=Fri, 31 Dec 9999 23:59:59 GMT');
   } else if (expires instanceof Date && !Number.isNaN(expires.valueOf())) {
     pairs.push(`Expires=${expires.toUTCString()}`);
-  } else if (expires === 0) {
-    pairs.push('Expires=0');
-  } else if (isNumber(expires) && isFinite(expires)) {
+  } else if (isNumber(expires) && isFinite(expires) && expires !== 0) {
     pairs.push(`Expires=${(new Date(expires)).toUTCString()}`);
   }
 
@@ -460,10 +459,16 @@ export const deserialize = (string) => {
     let obj = string.match(isStringifiedRegEx)[1];
     if (obj) {
       try {
-        return JSON.parse(decode(obj));
-      } catch (e) {
-        Meteor._debug('[ostrio:cookies] [deserialize()] Exception:', e, string, obj);
-        return string;
+        // `parse()` already decoded the value; decoding again corrupts `%` in JSON
+        return JSON.parse(obj);
+      } catch (_e) {
+        try {
+          // Legacy double-encoded payload
+          return JSON.parse(decode(obj));
+        } catch (e) {
+          Meteor._debug('[ostrio:cookies] [deserialize()] Exception:', e, string, obj);
+          return string;
+        }
       }
     }
     return string;

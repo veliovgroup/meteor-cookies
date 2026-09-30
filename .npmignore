@@ -1,7 +1,10 @@
 *.md
 .agents
+.claude
 .cursor
 .cursorignore
+.coverage
+coverage
 .meteorignore
 .DS_Store
 .eslintcache
@@ -10,9 +13,11 @@
 .meteor
 .npm
 .versions
+docs
 node_modules
 npm-debug.log*
 index.test-d.ts
 package.js
 tests
+tsconfig.json
 tests/*

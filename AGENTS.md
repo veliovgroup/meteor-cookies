@@ -1,80 +1,17 @@
 # AGENTS.md
 
-Core rules for all AI agents / Cursor agents working on this ostrio:cookies repository.
+Meteor Atmosphere package `ostrio:cookies`: isomorphic cookies for Server, Client, Cordova, and Meteor-Desktop.
 
-## Universal Agentic Skill
-See [`.agents/ostrio-cookies-skill.md`](.agents/ostrio-cookies-skill.md) for:
-- Coding style rules (JSDoc @locus, __private, type guards via toString.call, Meteor.is*).
-- Core principles of package (bulletproof cookies, singleton middleware with static Maps + destroy(), zero deps, 99.9% Tinytest coverage, Unicode+complex values).
-- Best practices: modern JS, Node middleware, Meteor Atmosphere package dev (package.js mainModule/versionsFrom/weak TS, early middleware, update tests/types/docs/CHANGELOG, .meteorignore exclusions).
+Load [`.agents/skills/ostrio-cookies/SKILL.md`](.agents/skills/ostrio-cookies/SKILL.md) before any edit or review.
 
-**Always load and follow this skill for any task, review, edit, PR.**
+## Layout
+- `cookies.js`: `CookiesCore` and `Cookies` classes, server middleware (main module).
+- `helpers.js`: `parse`, `serialize`, `deserialize`, type guards.
+- `index.d.ts`: public types. `index.test-d.ts`: tsd tests.
+- `tests/`: Tinytest (`both.js`, `server.js`, `client.js`), coverage collector (`coverage.js`) and runner (`run-coverage.mjs`).
+- `docs/`: long-form docs linked from `README.md`.
 
-## Core Rules
-- **Review repo first**: Use knowledge of cookies.js (Cookies extends CookiesCore), helpers.js (parse/serialize/escape), package.js, index.d.ts, README.md, tests/.
-- **Maintain principles**: Bulletproof all edge cases. No new deps. High coverage. Singleton middleware pattern. Update ALL related files on change (code, tests, types, docs, changelog).
-- **Meteor specifics**: JSDoc everywhere with @locus. Early WebApp.connectHandlers. Place high in .meteor/packages. mainModule(). Weak TS. Tinytest tests for client/server/both.
-- **JS Style**: ES6 classes, explicit helpers.is*, Symbol ids, terse but documented. Cross-env type checks. Template literals. No var.
-- **Changes**: Follow user_rules (terse technical responses, normal for code/commits/PRs). Update version if breaking. Keep compat.
-- **Tests**: Run `meteor test-packages ./` after changes. 99.9% coverage.
-- **Docs**: Sync README examples, FAQ (Cordova, middleware order), API notes.
-- **PRs/Reviews**: Check singleton, destroy(), security attrs (sameSite, partitioned, priority), TS, tests.
-
-## Code Style Rules
-- **Indentation:** 2 spaces.
-- Use **single quotes** for strings.
-- **Prefer simple ES classes** for cohesive state/services when they clarify lifecycle (e.g. a small data service with start/stop).
-- Use **small pure functions** for transforms, formatting, and validation.
-- **Performance**: favor O(n) single passes, avoid repeated work and heavy loops, cache derived values when dependencies are narrow.
-- Always end line with semicolon `;`.
-- Prefer `void 0` to `undefined` where applicable, like `return void 0`.
-- Prefer functions defined as variable to "named functions" where applicable.
-
-### JS Style Example
-
-```js
-const string = 'string value';
-const object = {
-  key: string,
-};
-
-const complexObject = {
-  key: string,
-  array: ['one', 'two', 'three'],
-  date: new Date(),
-  timestamp: Date.now(),
-  arrayWithObjects: [{
-    key: {
-      keyLevel2: false,
-    },
-    key2: {
-      array: [{
-        keyLevel3: true,
-      }]
-    }
-  }, {
-    keySecondObject: {
-      keyLevel2: true,
-      otherKeyLevel2: 'string - lorem ipsium',
-    }
-  }],
-};
-
-const sayName = (name) => {
-  if (!name) {
-    return void 0;
-  }
-
-  return `Your name is ${name}`;
-};
-```
-
-## Edit rules and flow
-- Introduce changes, validate, run tests.
-- Update TS definitions if absolutely necessary after introduced changes.
-- Update documentation if necessary adding new features or changing old ones.
-- In case of major updates — Add migration instructions to package documentation.
-
-This file excluded from Meteor publish via .meteorignore. Skill in .agents/ also excluded.
-
-Follow create-rule and create-skill patterns where applicable for future extensions.
+## Commands
+- `npm test`: Tinytest (headless) and type tests.
+- `npm run test:types`: type tests only.
+- `npm run test:coverage`: Tinytest on istanbul-instrumented sources, nyc report and threshold check.

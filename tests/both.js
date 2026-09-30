@@ -122,7 +122,7 @@ Tinytest.add('helpers: serialize preserves expiry options without mutating calle
   };
   const { cookieString } = serialize('expiry', 'value', options);
 
-  test.include(cookieString, 'Expires=0', 'Explicit expires: 0 is preserved');
+  test.notInclude(cookieString, 'Expires=', 'Explicit expires: 0 creates session cookie');
   test.notInclude(cookieString, '9999', 'expires takes precedence over expire alias');
   test.equal(options, {
     expires: 0,
@@ -141,6 +141,30 @@ Tinytest.add('helpers: serialize ignores invalid expires values', (test) => {
   test.notInclude(invalidDate, 'Expires=', 'Invalid Date expires is ignored');
 });
 
+Tinytest.add('helpers: serialize ignores invalid maxAge and floors fractions', (test) => {
+  test.notInclude(serialize('a', 'b', { maxAge: NaN }).cookieString, 'Max-Age', 'NaN maxAge is ignored');
+  test.notInclude(serialize('a', 'b', { maxAge: Infinity }).cookieString, 'Max-Age', 'Infinity maxAge is ignored');
+  test.include(serialize('a', 'b', { maxAge: 1.9 }).cookieString, 'Max-Age=1;', 'Fractional maxAge is floored');
+});
+
+Tinytest.add('helpers: serialize prevents attribute injection via name, path, and domain', (test) => {
+  const key = 'name; Domain=evil.com=';
+  const { cookieString } = serialize(key, 'value');
+
+  test.notInclude(cookieString, 'Domain=evil.com', 'Cookie name cannot inject attributes');
+  test.equal(parse(cookieString.split('; ')[0])[key], 'value', 'Escaped cookie name round-trips');
+  test.throws(() => serialize('a', 'b', { path: '/; Domain=evil.com' }), /path is invalid/);
+  test.throws(() => serialize('a', 'b', { domain: 'example.com; Secure' }), /domain is invalid/);
+});
+
+Tinytest.add('helpers: object values with percent signs round-trip through parse', (test) => {
+  const value = { percent: '100%', encoded: '%41', nested: ['%E0%A4%A'] };
+  const parsed = parse(serialize('percent', value).cookieString.split('; ')[0]);
+
+  test.equal(deserialize(parsed.percent), value, 'Object with % characters round-trips');
+  test.equal(deserialize(`JSON.parse(${encodeURIComponent('{"legacy":true}')})`), { legacy: true }, 'Legacy double-encoded payload still parses');
+});
+
 Tinytest.add('Class - CookiesCore get() and has() respect empty temporary cookie string', (test) => {
   const cookies = new CookiesCore({
     _cookies: {
@@ -150,4 +174,33 @@ Tinytest.add('Class - CookiesCore get() and has() respect empty temporary cookie
 
   test.isUndefined(cookies.get('session', ''), 'Empty temporary cookie string does not fall back to instance cookies');
   test.isFalse(cookies.has('session', ''), 'Empty temporary cookie string has no instance cookies');
+});
+
+Tinytest.add('Class - CookiesCore set() with expires: 0 overrides TTL with session cookie', (test) => {
+  const cookies = new CookiesCore({ TTL: 60000 });
+  const response = { headers: {}, setHeader(name, value) { this.headers[name] = value; }, getHeader(name) { return this.headers[name]; } };
+  cookies.response = response;
+  cookies.set('session', 'value', { expires: 0 });
+
+  if (Meteor.isServer) {
+    test.equal(response.getHeader('Set-Cookie'), ['session=value; Path=/'], 'No Expires attribute');
+  }
+  test.equal(cookies.get('session'), 'value');
+  cookies.remove('session');
+});
+
+Tinytest.add('Class - CookiesCore remove() with empty or null key is a no-op', (test) => {
+  const cookies = new CookiesCore({
+    _cookies: {
+      first: '1',
+      second: '2'
+    }
+  });
+
+  test.isFalse(cookies.remove(''), 'remove("") returns false');
+  test.isFalse(cookies.remove(null), 'remove(null) returns false');
+  test.equal(cookies.keys(), ['first', 'second'], 'Cookies are kept');
+  test.isTrue(cookies.remove(), 'remove() without arguments removes all');
+  test.equal(cookies.keys(), [], 'All cookies removed');
+  test.isFalse(cookies.remove(), 'remove() on empty set returns false');
 });

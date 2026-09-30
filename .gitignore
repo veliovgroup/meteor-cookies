@@ -3,3 +3,7 @@
 .eslintcache
 .cursor/hooks/state
 node_modules
+npm-debug.log*
+.claude/settings.local.json
+.coverage
+coverage

@@ -1,5 +1,5 @@
 import { Meteor } from 'meteor/meteor';
-import helpers from './helpers.js';
+import * as helpers from './helpers.js';
 
 let fetch;
 let WebApp;
@@ -11,7 +11,7 @@ if (Meteor.isServer) {
 }
 
 const NoOp = () => {};
-const urlRE = /\/___cookie___\/set/;
+const urlRE = /\/___cookie___\/set\/?$/;
 const rootUrl = Meteor.isServer ? process.env.ROOT_URL : (window.__meteor_runtime_config__?.ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.ROOT_URL || false);
 const mobileRootUrl = Meteor.isServer ? process.env.MOBILE_ROOT_URL : (window.__meteor_runtime_config__?.MOBILE_ROOT_URL || window.__meteor_runtime_config__?.meteorEnv?.MOBILE_ROOT_URL || false);
 
@@ -60,6 +60,24 @@ const buildOriginRegExp = (root, mobileRoot) => {
   }
 
   return new RegExp(`^(?:${origins.map(escapeRegExp).join('|')})$`, 'i');
+};
+
+const originRE = buildOriginRegExp(rootUrl, mobileRootUrl);
+
+/**
+ * @function
+ * @private
+ * @name isSameOriginRequest
+ * @param {object} headers - Request headers
+ * @returns {boolean}
+ * @summary Check that request comes from the server's own origin: `Origin` host equals `Host`, or no `Origin` and not a cross-site `Sec-Fetch-Site`
+ */
+const isSameOriginRequest = (headers) => {
+  if (!headers.origin) {
+    return headers['sec-fetch-site'] !== 'cross-site' && headers['sec-fetch-site'] !== 'same-site';
+  }
+
+  return typeof headers.host === 'string' && headers.origin.replace(/^https?:\/\//i, '').toLowerCase() === headers.host.toLowerCase();
 };
 
 /**
@@ -154,7 +172,7 @@ class CookiesCore {
       this.allowedCordovaOrigins = false;
     }
 
-    this.originRE = buildOriginRegExp(rootUrl, mobileRootUrl);
+    this.originRE = originRE;
 
     if (helpers.isObject(opts._cookies)) {
       this.cookies = opts._cookies;
@@ -220,7 +238,7 @@ class CookiesCore {
    * @locus Anywhere
    * @memberOf CookiesCore
    * @name remove
-   * @param {string} key - The name of the cookie to create/overwrite
+   * @param {string} [key] - The name of the cookie to remove; omit to remove all cookies
    * @param {string} path - [Optional] The path from where the cookie will be
    * readable. E.g., "/", "/mydir"; if not specified, defaults to `/`.
    * The path must be
@@ -250,12 +268,14 @@ class CookiesCore {
       return true;
     }
 
-    if (!key && this.keys().length > 0 && this.keys()[0] !== '') {
-      const keys = Object.keys(this.cookies);
+    // ONLY `.remove()` WITHOUT ARGUMENTS REMOVES ALL COOKIES
+    // EMPTY STRING, `null`, OR OTHER FALSY KEY IS A NO-OP
+    if (key === void 0) {
+      const keys = this.keys().filter(Boolean);
       for (let i = 0; i < keys.length; i++) {
         this.remove(keys[i]);
       }
-      return true;
+      return keys.length > 0;
     }
 
     return false;
@@ -312,11 +332,11 @@ class CookiesCore {
 
       fetch(`${path}${query}`, {
         credentials: 'include',
-        type: 'cors'
+        mode: 'cors'
       }).then((response) => {
         this.cookies = helpers.parse(document.cookie);
         cb(void 0, response);
-      }).catch(cb);
+      }, cb);
     } else {
       cb(new Meteor.Error(400, 'Can\'t send cookies on server when `runOnServer` is false.'));
     }
@@ -344,7 +364,7 @@ class CookiesCore {
 
     const response = await fetch(`${path}${query}`, {
       credentials: 'include',
-      type: 'cors'
+      mode: 'cors'
     });
 
     this.cookies = helpers.parse(document.cookie);
@@ -397,12 +417,15 @@ class CookiesCore {
       return;
     }
 
-    if (!this.__pendingCookies.length && helpers.isFunction(this.response.getHeader)) {
+    // RE-READ HEADER ON EACH CALL TO KEEP `Set-Cookie` VALUES WRITTEN BY OTHER CODE
+    if (helpers.isFunction(this.response.getHeader)) {
       const currentHeader = this.response.getHeader('Set-Cookie');
       if (helpers.isArray(currentHeader)) {
         this.__pendingCookies = currentHeader.slice();
       } else if (currentHeader) {
         this.__pendingCookies = [currentHeader];
+      } else {
+        this.__pendingCookies = [];
       }
     }
 
@@ -448,7 +471,43 @@ class Cookies extends CookiesCore {
    */
   static isMiddlewareRegistered = false;
 
-  constructor(opts = {}) {
+  /**
+   * @summary __instances - Live server instances with `runOnServer: true`, candidates to take over middleware
+   * @type {Set<Cookies>}
+   * @static
+   */
+  static __instances = new Set();
+
+  /**
+   * @summary __owner - Instance which middleware logic currently runs
+   * @type {Cookies|null}
+   * @static
+   */
+  static __owner = null;
+
+  /**
+   * @summary __isDispatcherAttached - `true` after `Cookies.__dispatch` was passed to `WebApp.connectHandlers.use()`
+   * @type {boolean}
+   * @static
+   */
+  static __isDispatcherAttached = false;
+
+  /**
+   * @summary __dispatch - Single `WebApp` middleware, delegates to current auto-middleware owner
+   * @type {function(req: IncomingMessage, res: ServerResponse, next: NextFunction): void | Promise<void>}
+   * @static
+   */
+  static __dispatch = (req, res, next) => {
+    const owner = Cookies.__owner;
+    if (!owner || owner.__isManual) {
+      next();
+      return void 0;
+    }
+    return owner.__autoMiddleware(req, res, next);
+  };
+
+  constructor(_opts = {}) {
+    const opts = { ..._opts };
     opts.name = typeof opts.name === 'string' ? opts.name : 'COOKIES';
     opts.TTL = helpers.isNumber(opts.TTL) ? opts.TTL : false;
     opts.runOnServer = (opts.runOnServer !== false) ? true : false;
@@ -465,6 +524,7 @@ class Cookies extends CookiesCore {
       this._coreInstancesCount = 0;
       this.isDestroyed = false;
       this.hasMiddleware = false;
+      this.__isManual = false;
 
       if (helpers.isFunction(opts.onCookies)) {
         // `onCookies` HOOK REQUIRES AT LEAST ONE REGISTERED MIDDLEWARE
@@ -481,16 +541,41 @@ class Cookies extends CookiesCore {
         Cookies.__handlers.set(this.id, opts.handler);
       }
 
-      // IF `new Cookies()` CALLED MULTIPLE TIMES ON THE SERVER
-      // WE LIMIT REGISTERED MIDDLEWARES TO 1
-      // IF ORIGINAL Cookies INSTANCE HAS CALLED .destroy()
-      // WE ALLOW NEW MIDDLEWARE REGISTRATIONS BY FLAGGING
-      // Cookies.isMiddlewareRegistered AS false
-      if (opts.runOnServer && opts.auto && !Cookies.isMiddlewareRegistered) {
-        this.hasMiddleware = true;
-        Cookies.isMiddlewareRegistered = true;
-        WebApp.connectHandlers.use(this.__autoMiddleware.bind(this));
+      if (opts.runOnServer) {
+        Cookies.__instances.add(this);
       }
+
+      // IF `new Cookies()` CALLED MULTIPLE TIMES ON THE SERVER
+      // ONLY ONE INSTANCE OWNS MIDDLEWARE; WHEN IT'S DESTROYED
+      // ANOTHER LIVE INSTANCE TAKES OVER, SEE `.destroy()`
+      if (opts.runOnServer && opts.auto && !Cookies.isMiddlewareRegistered) {
+        this.__takeOver();
+      }
+    }
+  }
+
+  /**
+   * @locus Server
+   * @memberOf Cookies
+   * @name __takeOver
+   * @param {boolean} [isManual=false] - `true` when middleware is returned from `.middleware()`
+   * @summary Make this instance the middleware owner, attach `Cookies.__dispatch` once
+   * @returns {void}
+   * @private
+   */
+  __takeOver(isManual = false) {
+    if (Cookies.__owner) {
+      Cookies.__owner.hasMiddleware = false;
+    }
+
+    Cookies.__owner = this;
+    Cookies.isMiddlewareRegistered = true;
+    this.hasMiddleware = true;
+    this.__isManual = isManual;
+
+    if (!isManual && !Cookies.__isDispatcherAttached) {
+      Cookies.__isDispatcherAttached = true;
+      WebApp.connectHandlers.use(Cookies.__dispatch);
     }
   }
 
@@ -516,11 +601,10 @@ class Cookies extends CookiesCore {
       return this.__blankMiddleware.bind(this);
     }
 
-    this.hasMiddleware = true;
-    Cookies.isMiddlewareRegistered = true;
+    this.__takeOver(true);
 
     return async (req, res, next) => {
-      if (this.isDestroyed) {
+      if (Cookies.__owner !== this) {
         next();
         return;
       }
@@ -548,8 +632,25 @@ class Cookies extends CookiesCore {
       return false;
     }
 
-    if (this.hasMiddleware) {
+    Cookies.__instances.delete(this);
+    if (Cookies.__owner === this) {
+      Cookies.__owner = null;
       Cookies.isMiddlewareRegistered = false;
+      this.hasMiddleware = false;
+
+      // HAND MIDDLEWARE OVER TO ANOTHER LIVE INSTANCE, PREFER `{auto: true}`
+      let successor = null;
+      for (const instance of Cookies.__instances) {
+        if (instance.opts.auto) {
+          successor = instance;
+          break;
+        }
+        successor = successor || instance;
+      }
+
+      if (successor) {
+        successor.__takeOver();
+      }
     }
 
     this.isDestroyed = true;
@@ -625,8 +726,9 @@ class Cookies extends CookiesCore {
     }
 
     const requestPath = (req._parsedUrl && req._parsedUrl.path) || req.url || '';
+    const queryStart = requestPath.indexOf('?');
 
-    if (urlRE.test(requestPath)) {
+    if (urlRE.test(queryStart === -1 ? requestPath : requestPath.slice(0, queryStart))) {
       res.statusCode = 200;
 
       const headers = req.headers || {};
@@ -637,31 +739,33 @@ class Cookies extends CookiesCore {
       const matchedOrigin = matchedCordovaOrigin
         || (!!headers.origin && this.originRE && this.originRE.test(headers.origin));
 
+      // REJECT CROSS-SITE REQUESTS, SO OTHER WEBSITES CAN'T TRIGGER `onCookies` HOOKS
+      if (!matchedOrigin && !isSameOriginRequest(headers)) {
+        res.statusCode = 403;
+        res.end();
+        return;
+      }
+
       if (matchedOrigin) {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Origin', headers.origin);
       }
 
-      let cookiesObject = {};
-      const queryCookies = getQueryStringCookies(req, requestPath);
-      if (matchedCordovaOrigin && this.opts.allowQueryStringCookies && queryCookies) {
-        cookiesObject = parseQueryStringCookies(queryCookies);
-      } else if (headers.cookie) {
-        cookiesObject = helpers.parse(headers.cookie);
-      }
-
-      const cookiesKeys = Object.keys(cookiesObject);
-      const cookiesArray = [];
-      if (cookiesKeys.length) {
-        for (let i = 0; i < cookiesKeys.length; i++) {
-          const { cookieString } = helpers.serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]);
-          if (!cookiesArray.includes(cookieString)) {
-            cookiesArray.push(cookieString);
+      // ONLY CORDOVA/DESKTOP QUERY-STRING COOKIES ARE SET ON THE SERVER ORIGIN
+      // REQUEST `Cookie` HEADER IS NEVER ECHOED BACK, AS IT WOULD STRIP
+      // ORIGINAL ATTRIBUTES (HttpOnly, Secure, SameSite, Expires)
+      if (matchedCordovaOrigin && this.opts.allowQueryStringCookies) {
+        const cookiesObject = parseQueryStringCookies(getQueryStringCookies(req, requestPath));
+        const cookiesKeys = Object.keys(cookiesObject);
+        if (cookiesKeys.length) {
+          const cookiesArray = [];
+          for (let i = 0; i < cookiesKeys.length; i++) {
+            cookiesArray.push(helpers.serialize(cookiesKeys[i], cookiesObject[cookiesKeys[i]]).cookieString);
           }
-        }
-
-        if (cookiesArray.length) {
           res.setHeader('Set-Cookie', cookiesArray);
+
+          req.Cookies = this.__getCookiesCore(req, res);
+          Object.assign(req.Cookies.cookies, cookiesObject);
         }
       }
 

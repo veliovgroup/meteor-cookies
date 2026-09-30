@@ -293,6 +293,185 @@ Tinytest.addAsync('Server: invalid Cordova origin option is ignored', async (tes
   cookiesInstance.destroy();
 });
 
+Tinytest.addAsync('Server: Cordova onCookies hook receives query-string cookies', async (test) => {
+  let hookCookies;
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true,
+    onCookies(cookies) {
+      hookCookies = { query: cookies.get('queryCookie'), header: cookies.get('headerCookie') };
+      cookies.set('fromHook', 'hookValue');
+    }
+  });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {
+      origin: 'http://localhost:12000',
+      cookie: 'headerCookie=headerValue'
+    },
+    _parsedUrl: {
+      path: `/___cookie___/set?___cookies___=${encodeURIComponent('queryCookie=queryValue')}`
+    }
+  }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+
+  test.equal(hookCookies, { query: 'queryValue', header: 'headerValue' }, 'Hook sees query-string and header cookies');
+  test.equal(response.getHeader('Set-Cookie'), ['queryCookie=queryValue; Path=/', 'fromHook=hookValue; Path=/'], 'Query cookies and hook cookies are both set');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: endpoint does not echo request cookies without query-string payload', async (test) => {
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: { cookie: 'session=secret' },
+    _parsedUrl: { path: '/___cookie___/set' }
+  }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+
+  test.isUndefined(response.getHeader('Set-Cookie'), 'Request cookies are not re-set without their original attributes');
+  test.isTrue(response.ended, 'Response ended');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: endpoint path in query string does not hijack request', async (test) => {
+  let nextCalled = false;
+  const response = mockResponse();
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
+
+  await cookiesInstance.__autoMiddleware({
+    headers: {},
+    _parsedUrl: { path: '/search?q=/___cookie___/set' }
+  }, response, () => {
+    nextCalled = true;
+  });
+
+  test.isTrue(nextCalled, 'Regular route calls next');
+  test.isUndefined(response.ended, 'Regular route response is not ended');
+  cookiesInstance.destroy();
+});
+
+Tinytest.add('Server: set() keeps Set-Cookie values added by other code', (test) => {
+  const response = mockResponse();
+  const cookies = new CookiesCore({ response });
+
+  cookies.set('first', '1');
+  response.setHeader('Set-Cookie', [...response.getHeader('Set-Cookie'), 'other=1; Path=/']);
+  cookies.set('second', '2');
+
+  test.equal(response.getHeader('Set-Cookie'), ['first=1; Path=/', 'other=1; Path=/', 'second=2; Path=/'], 'Header written by other code is preserved');
+});
+
+Tinytest.add('Server: Cookies constructor does not mutate options', (test) => {
+  const opts = { auto: false };
+  const cookiesInstance = new Cookies(opts);
+
+  test.equal(opts, { auto: false }, 'Options object is not mutated');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: endpoint rejects cross-site requests without running hooks', async (test) => {
+  let hookCalls = 0;
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    onCookies() {
+      hookCalls++;
+    }
+  });
+
+  const requests = [
+    { origin: 'https://evil.example', host: 'localhost:3000' },
+    { host: 'localhost:3000', 'sec-fetch-site': 'cross-site' },
+    { host: 'localhost:3000', 'sec-fetch-site': 'same-site' }
+  ];
+
+  for (const headers of requests) {
+    const response = mockResponse();
+    await cookiesInstance.__autoMiddleware({
+      headers: { ...headers, cookie: 'session=secret' },
+      _parsedUrl: { path: '/___cookie___/set' }
+    }, response, () => {
+      test.fail('Endpoint middleware should not call next');
+    });
+
+    test.equal(response.statusCode, 403, `Rejected: ${JSON.stringify(headers)}`);
+    test.isTrue(response.ended, 'Response ended');
+  }
+
+  test.equal(hookCalls, 0, 'Hooks did not run');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: endpoint accepts same-origin requests', async (test) => {
+  let hookCalls = 0;
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    runOnServer: true,
+    onCookies() {
+      hookCalls++;
+    }
+  });
+
+  const requests = [
+    { origin: 'http://LocalHost:3000', host: 'localhost:3000' },
+    { host: 'localhost:3000', 'sec-fetch-site': 'same-origin' },
+    { host: 'localhost:3000' }
+  ];
+
+  for (const headers of requests) {
+    const response = mockResponse();
+    await cookiesInstance.__autoMiddleware({
+      headers,
+      _parsedUrl: { path: '/___cookie___/set' }
+    }, response, () => {
+      test.fail('Endpoint middleware should not call next');
+    });
+
+    test.equal(response.statusCode, 200, `Accepted: ${JSON.stringify(headers)}`);
+  }
+
+  // GLOBAL TEST HOOK ALSO RUNS; ONLY COUNT THIS INSTANCE
+  test.equal(hookCalls, requests.length, 'Hooks ran for each request');
+  cookiesInstance.destroy();
+});
+
+Tinytest.add('Server: destroying middleware owner hands middleware over to live instance', (test) => {
+  const originalOwner = Cookies.__owner;
+  const handlerOnly = new Cookies({ name: `${test.test_case.name}-handler`, auto: false, handler() {} });
+  const temporaryOwner = new Cookies({ name: `${test.test_case.name}-owner`, auto: false });
+
+  temporaryOwner.__takeOver();
+  test.equal(Cookies.__owner, temporaryOwner, 'Temporary owner took over');
+  test.isFalse(originalOwner.hasMiddleware, 'Previous owner lost middleware');
+
+  temporaryOwner.destroy();
+  test.equal(Cookies.__owner, originalOwner, '{auto: true} instance is preferred as successor');
+  test.isTrue(originalOwner.hasMiddleware, 'Successor owns middleware');
+  test.isTrue(Cookies.isMiddlewareRegistered, 'Middleware is still registered');
+  test.isFalse(handlerOnly.hasMiddleware, 'Handler-only instance is not owner');
+
+  handlerOnly.destroy();
+});
+
+Tinytest.add('Server: middleware dispatcher is attached once', (test) => {
+  const app = WebApp.connectHandlers;
+  const handlers = app.router?.stack || app._router?.stack || app.stack || [];
+  const count = handlers.filter((layer) => layer.handle === Cookies.__dispatch).length;
+  test.isTrue(handlers.length > 0, 'Middleware stack is readable');
+  test.equal(count, 1, 'Cookies.__dispatch registered once');
+  test.isTrue(Cookies.__isDispatcherAttached, 'Dispatcher attached');
+});
+
 Tinytest.addAsync('Server: client methods throws - sendAsync', async (test) => {
   const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: true });
   await test.throwsAsync(async () => { await cookiesInstance.sendAsync(); }, /Client only/, 'sendAsync() should throw on Server');
@@ -583,17 +762,7 @@ Tinytest.addAsync('Server: {onCookies} hook - sync', (test, next) => {
       },
     });
 
-    const headerCookies = response.headers.get('set-cookie');
-    const cookies = new CookiesCore({
-      name: test.test_case.name + ' - core',
-      _cookies: headerCookies || '',
-      setCookie: true
-    });
-
-    test.isTrue(cookies.has('testCookie1'), 'Received set-cookie header has testCookie1');
-    test.isTrue(cookies.has('testCookie2'), 'Received set-cookie header has testCookie2');
-    test.equal(cookies.get('testCookie1'), testValue1, 'Received set-cookie header has correct value 1');
-    test.equal(cookies.get('testCookie2'), testValue2, 'Received set-cookie header has correct value 2');
+    test.isNull(response.headers.get('set-cookie'), 'Request cookies are not echoed back as set-cookie header');
 
     test.equal(cookiesInstance.destroy(), true, 'cookiesInstance.destroy() returns true when called first time');
     test.equal(Cookies.__handlers.size, 0, 'Cookies.__handlers.size is 0 after class was .destroy(ed)');
@@ -627,17 +796,7 @@ Tinytest.addAsync('Server: {onCookies} hook - async', (test, next) => {
       },
     });
 
-    const headerCookies = response.headers.get('set-cookie');
-    const cookies = new CookiesCore({
-      name: test.test_case.name + ' - core',
-      _cookies: headerCookies || '',
-      setCookie: true
-    });
-
-    test.isTrue(cookies.has('testCookie1'), 'Received set-cookie header has testCookie1');
-    test.isTrue(cookies.has('testCookie2'), 'Received set-cookie header has testCookie2');
-    test.equal(cookies.get('testCookie1'), testValue1, 'Received set-cookie header has correct value 1');
-    test.equal(cookies.get('testCookie2'), testValue2, 'Received set-cookie header has correct value 2');
+    test.isNull(response.headers.get('set-cookie'), 'Request cookies are not echoed back as set-cookie header');
 
     test.equal(cookiesInstance.destroy(), true, 'cookiesInstance.destroy() returns true when called first time');
     test.equal(Cookies.__handlers.size, 0, 'Cookies.__handlers.size is 0 after class was .destroy(ed)');

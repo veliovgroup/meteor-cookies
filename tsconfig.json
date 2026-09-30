@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
+    "strict": true,
     "preserveSymlinks": true,
     "paths": {
+      "meteor/ostrio:cookies": [
+        "./index.d.ts"
+      ],
       "meteor/*": [
-        "node_modules/@types/meteor/*",
-        ".meteor/local/types/packages.d.ts"
+        "./node_modules/@types/meteor/*",
+        "./.meteor/local/types/packages.d.ts"
       ]
     }
   }

@@ -9,7 +9,7 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 
 - 👨‍💻 Stable codebase
 - 🚀 400,000+ downloads
-- 👨‍🔬 **99.95% tests coverage** / TDD
+- 👨‍🔬 TDD with Tinytest, coverage measured on every CI run (`npm run test:coverage`)
 - 📦 No external dependencies (no `underscore`, `jQuery`, or `Blaze`)
 - 🖥 Consistent API across *Server* and *Client* environments
 - 📱 Compatible with *Cordova*, *Browser*, *Meteor-Desktop*, and other client platforms
@@ -29,17 +29,17 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
   - [`.get()`](#get) – Read a cookie
   - [`.set()`](#set) – Set a cookie
   - [`.remove()`](#remove) – Remove one or all cookies
+  - [`.has()`](#has) – Check if a cookie exists
   - [`.keys()`](#keys) – List all cookie keys
   - [`.send()`](#send) – Sync cookies with the server
   - [`.sendAsync()`](#sendasync) – Sync cookies asynchronously
   - [`.middleware()`](#middleware) – Register cookie middleware manually
+  - [`.destroy()`](#destroy) – Unregister hooks, callbacks, and middleware
   - [`new CookiesCore()` constructor](#new-cookiescore-constructor) – Low-level class that can be used to directly parse and manage cookies
 - [Examples](#examples)
   - [Client Usage](#example-client-usage)
   - [Server Usage](#example-server-usage)
-  - [Server with multiple cookie handlers](#example-server-with-multiple-cookie-handlers)
-  - [Set and read cookies based on URL](#example-set-and-read-cookies-based-on-url)
-  - [Alternative Usage](#example-alternative-usage)
+  - [More examples](#more-examples)
 - [Running Tests](#running-tests)
 - [Support Our Open Source Contributions](#support-our-open-source-contributions)
 
@@ -49,6 +49,8 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 meteor add ostrio:cookies
 ```
 
+Upgrading from v2? See [docs/migration-v3.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/migration-v3.md)
+
 ## ES6 Import
 
 ```js
@@ -57,20 +59,15 @@ import { Cookies } from 'meteor/ostrio:cookies';
 
 ## FAQ
 
-- **Cordova Usage**: This recommendation applies only to outgoing cookies from *Client → Server*. Cookies set by the server work out-of-the-box on the client:
-  - Enable [withCredentials](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials)
-  - Set `{ allowQueryStringCookies: true }` and `{ allowedCordovaOrigins: true }` on both *Client* and *Server*
-  - When `allowQueryStringCookies` is enabled, cookies are transferred to the server via a query string (GET parameters)
-  - For security, this is allowed only when the `Origin` header matches the regular expression `^http://localhost:12[0-9]{3}$` (Meteor/Cordova connects through `localhost:12XXX`)
-- **Cookies Missing on Server?** In most cases, this is due to Meteor's HTTP callback-chain ordering. Ensure that `new Cookies()` is called **before** routes are registered:
-- **Meteor-Desktop Compatibility:** `ostrio:cookies` can be used in [`meteor-desktop`](https://github.com/Meteor-Community-Packages/meteor-desktop) projects. Since Meteor-Desktop works similarly to Cordova, all Cordova recommendations from above apply
+- **Cordova and Meteor-Desktop**: Server-set cookies work out of the box. To send cookies from *Client* to *Server*, set `{ allowQueryStringCookies: true, allowedCordovaOrigins: true }` on both *Client* and *Server*. See [docs/cordova.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/cordova.md)
+- **Cookies missing on Server?** Call `new Cookies()` **before** registering routes, and place `ostrio:cookies` above community packages in `.meteor/packages`. See [docs/server.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#middleware-order)
 
 ## API
 
 > [!NOTE]
-> On the server, cookies are set only after headers are sent (i.e. on the next route or page reload)
+> On the *Server*, `req.Cookies.set()` adds a `Set-Cookie` header to the current response. The browser stores the cookie when the response arrives. A *Client* instance sees it after a page reload or after `send()` / `sendAsync()` resolves
 >
-> To sync cookies from *Client* to *Server* without a page reload, use `sendAsync()` or `send()`
+> To make *Client* cookies available to server `onCookies` hooks without a page reload, use `sendAsync()` or `send()`
 
 
 > [!TIP]
@@ -83,7 +80,7 @@ See [FAQ](#faq) for more tips
 > [!IMPORTANT]
 > **On the Server**: it's possible to create many `new Cookies()` instances with `handler` callbacks and `onCookies` hooks, then later each instance can get destroyed calling `.destroy()` method.
 >
-> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All subsequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`
+> **Note:** Only one middleware will be registered and passed into `WebApp.connectHandlers.use()` at the time! All subsequent `handler` and `onCookies` callbacks and hooks will be added to shared Map and called as expected within the first registered middleware. Invoking `.middleware()` method manually will result in warning and will return "blank" middleware handler which will instantly call `NextFunc()`. When the instance that owns the middleware is destroyed, another live instance takes it over
 
 ### `new Cookies()` Constructor
 
@@ -144,7 +141,7 @@ cookies.get('age'); // returns 25
 
 **Supported CookieOptions:**
 
-- `opts.expires` {*number* | *Date* | *Infinity*}: Cookie expiration
+- `opts.expires` {*number* | *Date* | *Infinity*}: Cookie expiration. `0` creates a session cookie and overrides `TTL`
 - `opts.maxAge` {*number*}: Maximum age in seconds
 - `opts.path` {*string*}: Cookie path (default: `/`)
 - `opts.domain` {*string*}: Cookie domain
@@ -168,7 +165,7 @@ cookies.set('age', 25, {
 
 *(Anywhere)* Remove cookie(s)
 
-- `remove()` – Removes all cookies on the current domain
+- `remove()` – Removes all cookies on the current domain. Only a call without arguments does this; `remove('')` and `remove(null)` return `false`
 - `remove(key)` – Removes the specified cookie
 - `remove(key, path, domain)` – Removes a cookie with the given key, path, and domain
 
@@ -213,7 +210,7 @@ const cookieKeys = cookies.keys(); // string[] (e.g., ['locale', 'country', 'gen
 
 #### `.send()`
 
-*(Client only)* Send all current cookies to the server via `fetch` and callback
+*(Client only)* Send all current cookies to the server via `fetch` and callback. The server runs `onCookies` hooks, and cookies set by hooks are available on the client when the callback runs. Requires `runOnServer: true` (default)
 
 **Arguments:**
 
@@ -233,7 +230,7 @@ cookies.send((error, response) => {
 
 #### `.sendAsync()`
 
-*(Client only)* Send all current cookies to the server via `fetch` and `Promise`
+*(Client only)* Same as `.send()`, returns a `Promise<Response>`. Rejects with `Meteor.Error` when `runOnServer` is `false`
 
 ```js
 const response = await cookies.sendAsync();
@@ -299,55 +296,22 @@ cookies.destroy(); // false — returns `false` as instance was already destroye
 > `CookiesCore` instance has the same methods as `Cookies` class except `.destroy()` and `.middleware()`
 
 ```js
-import { Meteor } from 'meteor/meteor';
-import { WebApp } from 'meteor/webapp';
 import { CookiesCore } from 'meteor/ostrio:cookies';
 
-if (Meteor.isServer) {
-  // EXAMPLE SERVER USAGE
-  WebApp.connectHandlers.use((request, response, next) => {
-    const cookies = new CookiesCore({
-      _cookies: request.headers.cookie || '',
-      response,
-    });
+// Parse a Set-Cookie header
+const cookies = new CookiesCore({
+  _cookies: 'session=abc; Path=/; HttpOnly, theme=dark; Path=/',
+  setCookie: true
+});
 
-    // FOR EXAMPLE: CHECK SESSION EXPIRATION
-    if (cookies.has('session-exp')) {
-      if (cookies.get('session-exp') < Date.now()) {
-        // .remove() WILL ADD `Set-Cookie` HEADER WITH expires=0 OPTION
-        cookies.remove('session-id');
-        cookies.remove('session-exp');
-      }
-    } else {
-      // MARK USER AS NEW
-      cookies.set('session-type', 'new-user');
-    }
-    next();
-  });
-}
-
-if (Meteor.isClient) {
-  const cookies = new CookiesCore({
-    // {runOnServer: true} Enables syncing cookies between client and server
-    // Requires `new Cookies({auto: true})` on server
-    runOnServer: true,
-    _cookies: { // <- Set default cookies
-      key: 'name',
-      theme: 'dark',
-      isNew: true,
-      'agreed-with-gdpr': false,
-    }
-  });
-
-  // SET OR CHANGE COOKIES IN RUNTIME
-  cookies.set('ab-test', 42);
-  cookies.set('isNew', false);
-  cookies.set('agreed-with-gdpr', true);
-
-  // SYNC COOKIES
-  await cookies.sendAsync();
-}
+cookies.get('theme'); // 'dark'
+cookies.keys(); // ['session', 'theme']
 ```
+
+> [!NOTE]
+> An object passed as `_cookies` is kept in memory only. On the *Client* it isn't written to `document.cookie`, so `.send()` doesn't transfer it. Use `.set()` to store a cookie in the browser
+
+Server usage without middleware: [docs/server.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#cookiescore-without-middleware)
 
 ## Examples
 
@@ -390,110 +354,12 @@ WebApp.connectHandlers.use((req, res, next) => {
 });
 ```
 
-### Example: Server with multiple cookie handlers
+### More examples
 
-Sometimes it is required to build temporary or separate logic based on Client's cookies. And to split logic between different modules and files
-
-```js
-import { Cookies } from 'meteor/ostrio:cookies';
-import { WebApp } from 'meteor/webapp';
-
-// register default middleware that will handle requests and req.Cookies extension
-const globalCookies = new Cookies();
-
-// In checkout module/file
-WebApp.connectHandlers.use((req, res, next) => {
-  if (req.Cookies.has('checkout-session')) {
-    const sessionId = req.Cookies.get('checkout-session');
-    // CHECK IF CHECKOUT SESSION IS VALID
-    if (isCheckoutSessionValid(sessionId)) {
-      // FORCE-REDIRECT USER TO CHECKOUT IF SESSION IS VALID
-      res.statusCode = 302;
-      res.setHeader('Location', `https://example.com?chsessid=${sessionId}`);
-      res.end();
-      return;
-    }
-
-    // REMOVE CHECKOUT COOKIE IF NOT VALID OR EXPIRED
-    req.Cookies.remove('checkout-session');
-  }
-
-  next();
-});
-
-// In session module/file
-const sessionCookies = new Cookies({
-  auto: false,
-  async handler(cookies) {
-    // FOR EXAMPLE: CHECK SESSION EXPIRATION
-    if (cookies.has('session-exp')) {
-      if (cookies.get('session-exp') < Date.now()) {
-        // .remove() WILL ADD `Set-Cookie` HEADER WITH expires=0 OPTION
-        cookies.remove('session-id');
-        cookies.remove('session-exp');
-      }
-    } else {
-      // MARK USER AS NEW
-      cookies.set('session-type', 'new-user');
-    }
-  }
-});
-// unregister handler when it isn't needed
-sessionCookies.destroy();
-```
-
-### Example: Set and read cookies based on URL
-
-Often cookies logic depends on URL it was called from. Access request details on `handler` callback using `cookies.response.req.url` {*IncomingMessage*} object:
-
-```js
-import { Meteor } from 'meteor/meteor';
-import { Random } from 'meteor/random';
-import { Cookies } from 'meteor/ostrio:cookies';
-
-new Cookies({
-  auto: false,
-  async handler(cookies) {
-    const url = new URL(cookies.response.req.url, Meteor.absoluteUrl());
-    switch (url.pathname) {
-      case '/signup/create':
-        // GET USER'S SELECTED PLAN ON SIGNUP
-        const plan = url.searchParams.get('plan') || 'default-plan';
-        cookies.set('selected-tariff', plan);
-        break;
-      case '/shopping-cart/new':
-        // CREATE NEW CHECKOUT SESSION ID
-        cookies.set('checkout-session', Random.id());
-        break;
-    }
-  }
-});
-```
-
-### Example: Alternative Usage
-
-```js
-import { Meteor } from 'meteor/meteor';
-import { Cookies } from 'meteor/ostrio:cookies';
-
-if (Meteor.isClient) {
-  const cookies = new Cookies();
-  cookies.set('gender', 'male');
-  console.log(cookies.get('gender')); // "male"
-  console.log(cookies.keys()); // ['gender']
-}
-
-if (Meteor.isServer) {
-  const { WebApp } = require('meteor/webapp');
-  const cookiesInstance = new Cookies({
-    auto: false, // Disable auto-binding (optional)
-    handler(cookies) {
-      console.log(cookies.get('gender')); // "male"
-    }
-  });
-  WebApp.connectHandlers.use(cookiesInstance.middleware());
-}
-```
+- [Multiple handlers across modules](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#multiple-handlers-across-modules)
+- [Set cookies based on URL](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#set-cookies-based-on-url)
+- [Manual middleware registration](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md#manual-middleware-registration)
+- [Cordova and Meteor-Desktop](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/cordova.md)
 
 ## Running Tests
 
@@ -510,11 +376,20 @@ npm test
 # Direct command
 mtest --package ./ --port=8888 --once
 
+# Coverage report (text, coverage/index.html, coverage/lcov.info)
+npm run test:coverage
+
 # Type definitions
 npm run test:types
 
 # Browser fallback
 meteor test-packages ./ --once --driver-package test-in-console
+```
+
+On Apple Silicon, the Chromium bundled with `mtest` is x86-only. Point it to a local Chromium-based browser:
+
+```shell
+PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm test
 ```
 
 ## Support Our Open Source Contributions

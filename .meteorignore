@@ -1,5 +1,8 @@
 .agents/
+.claude/
 .cursor/
+.coverage/
+coverage/
 .cursorignore
 .github/
 .gitignore
@@ -11,6 +14,7 @@ AGENTS.md
 CHANGELOG.md
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
+docs/
 HISTORY.md
 LICENCE
 LICENSE

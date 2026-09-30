@@ -1,5 +1,4 @@
-/// <reference path="./index.d.ts" />
-
+import type { IncomingMessage } from 'http';
 import { expectAssignable, expectType } from 'tsd';
 import {
   Cookies,
@@ -70,6 +69,10 @@ const cookies = new Cookies({
   }
 });
 
+expectType<string>(cookies.NAME);
+expectType<CookieResponse | false>(cookies.response);
+expectType<boolean>(cookies.isDestroyed);
+expectType<boolean>(Cookies.isMiddlewareRegistered);
 expectType<boolean>(cookies.destroy());
 expectType<CookieMiddleware>(cookies.middleware());
 
@@ -86,3 +89,6 @@ const response: CookieResponse = {
 
 expectAssignable<CookieRequest>(request);
 expectAssignable<CookieResponse>(response);
+
+declare const req: IncomingMessage;
+expectType<CookiesCore | undefined>(req.Cookies);

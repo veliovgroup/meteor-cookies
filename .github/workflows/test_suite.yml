@@ -22,7 +22,7 @@ jobs:
           node-version: 22
 
       - name: cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-22-${{ hashFiles('**/package-lock.json') }}
@@ -36,4 +36,5 @@ jobs:
 
       - run: |
           meteor npm install
-          meteor npm run test
+          meteor npm run test:coverage
+          meteor npm run test:types
