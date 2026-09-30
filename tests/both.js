@@ -1,5 +1,5 @@
 import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
-import { clone, deserialize, isFunction, parse, serialize } from '../helpers';
+import { antiCircular, clone, deserialize, isFunction, parse, serialize, tryDecode } from '../helpers';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
 
@@ -203,4 +203,64 @@ Tinytest.add('Class - CookiesCore remove() with empty or null key is a no-op', (
   test.isTrue(cookies.remove(), 'remove() without arguments removes all');
   test.equal(cookies.keys(), [], 'All cookies removed');
   test.isFalse(cookies.remove(), 'remove() on empty set returns false');
+});
+
+Tinytest.add('helpers: serialize writes all cookie attributes', (test) => {
+  const date = new Date(Date.UTC(2030, 0, 1));
+  const { cookieString } = serialize('attrs', 'value', {
+    domain: 'example.com',
+    expires: date,
+    httpOnly: true,
+    secure: true,
+    partitioned: true,
+    priority: 'HIGH',
+    firstPartyOnly: true,
+    sameSite: 'Strict'
+  });
+
+  test.equal(cookieString, `attrs=value; Domain=example.com; Path=/; Expires=${date.toUTCString()}; HttpOnly; Secure; Partitioned; Priority=High; First-Party-Only; SameSite=Strict`, 'All attributes in order');
+});
+
+Tinytest.add('helpers: serialize expires and sameSite variants', (test) => {
+  const timestamp = Date.UTC(2030, 0, 1);
+  test.include(serialize('a', 'b', { expires: Infinity }).cookieString, 'Expires=Fri, 31 Dec 9999 23:59:59 GMT', 'Infinity expires never expires');
+  test.include(serialize('a', 'b', { expires: timestamp }).cookieString, `Expires=${new Date(timestamp).toUTCString()}`, 'Numeric expires is a timestamp');
+  test.isTrue(serialize('a', 'b', { sameSite: true }).cookieString.endsWith('; SameSite'), 'sameSite: true writes bare SameSite');
+});
+
+Tinytest.add('helpers: serialize priority values', (test) => {
+  test.include(serialize('a', 'b', { priority: 'low' }).cookieString, 'Priority=Low', 'low');
+  test.include(serialize('a', 'b', { priority: 'Medium' }).cookieString, 'Priority=Medium', 'Medium');
+  test.include(serialize('a', 'b', { priority: 'high' }).cookieString, 'Priority=High', 'high');
+  test.notInclude(serialize('a', 'b', { priority: 'urgent' }).cookieString, 'Priority', 'Invalid string priority is ignored');
+  test.notInclude(serialize('a', 'b', { priority: 1 }).cookieString, 'Priority', 'Non-string priority is ignored');
+});
+
+Tinytest.add('helpers: serialize edge-case inputs', (test) => {
+  test.equal(serialize('a', 'b', null).cookieString, 'a=b; Path=/', 'Non-object options are ignored');
+  test.equal(serialize('a', undefined).cookieString, 'a=; Path=/', 'Undefined value writes empty value');
+  test.equal(serialize('a', undefined).sanitizedValue, undefined, 'Undefined value is kept as sanitized value');
+  test.isTrue(serialize('a\u0001b', 'c').cookieString.startsWith('a%01b=c'), 'Control char in name is zero-padded');
+  test.isTrue(serialize('a;', 'c').cookieString.startsWith('a%3B=c'), '`;` in name is escaped');
+});
+
+Tinytest.add('helpers: parse edge-case inputs', (test) => {
+  test.throws(() => parse(null), /argument str must be a string/, 'Non-string throws');
+  test.equal({ ...parse('a="quoted value"') }, { a: 'quoted value' }, 'Quotes are stripped');
+  test.equal({ ...parse('a=first; a=second') }, { a: 'first' }, 'First duplicate wins');
+  test.equal({ ...parse('a=%E0%A4%A') }, { a: '%E0%A4%A' }, 'Malformed percent-encoding is kept');
+  test.equal({ ...parse('a="x,b=y"; Path=/, c=d', { setCookie: true }) }, { a: 'x,b=y', c: 'd' }, 'Comma inside quotes does not split Set-Cookie');
+  test.equal(tryDecode('%E0%A4%A', decodeURIComponent), '%E0%A4%A', 'tryDecode returns input on error');
+});
+
+Tinytest.add('helpers: clone, antiCircular and deserialize edge cases', (test) => {
+  const obj = { a: 1 };
+  test.equal(clone(obj), obj, 'Object is cloned');
+  test.isFalse(clone(obj) === obj, 'Object clone is a copy');
+  test.equal(clone(1), 1, 'Primitive is returned as is');
+  test.equal(antiCircular('str'), 'str', 'antiCircular returns primitive as is');
+  test.equal(deserialize(1), 1, 'Non-string is returned as is');
+  test.equal(deserialize('JSON.parse()'), 'JSON.parse()', 'Empty JSON wrapper stays string');
+  test.equal(deserialize('JSON.parse({broken)'), 'JSON.parse({broken)', 'Invalid JSON wrapper stays string');
+  test.equal(deserialize('true'), true, 'Typed value is parsed');
 });

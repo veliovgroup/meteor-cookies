@@ -362,10 +362,8 @@ export const serialize = (key, val, opt = {}) => {
       value = encode(`JSON.parse(${stringified})`);
       sanitizedValue = JSON.parse(stringified);
     } else {
+      // `encodeURIComponent` OUTPUT IS ALWAYS VALID `field-content`
       value = encode(value);
-      if (value && !fieldContentRegExp.test(value)) {
-        value = customEscape(value);
-      }
     }
   } else {
     value = '';
@@ -473,11 +471,7 @@ export const deserialize = (string) => {
     }
     return string;
   } else if (isTypedRegEx.test(string)) {
-    try {
-      return JSON.parse(string);
-    } catch (_e) {
-      return string;
-    }
+    return JSON.parse(string);
   }
   return string;
 };

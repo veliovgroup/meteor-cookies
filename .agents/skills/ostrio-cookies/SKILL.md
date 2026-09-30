@@ -25,5 +25,5 @@ description: Rules for editing, reviewing, and testing the ostrio:cookies Meteor
 2. Fix the code.
 3. Update `index.d.ts` and `index.test-d.ts` when the API or types change.
 4. README: short, example-driven. Details, edge cases, Cordova notes: `docs/*.md`.
-5. Run `npm test` (Tinytest via mtest plus tsd) and `npm run test:coverage` (thresholds in `package.json` `nyc`). On Apple Silicon set `PUPPETEER_EXECUTABLE_PATH` to a local Chrome.
+5. Run `npm test` (Tinytest via mtest plus tsd) and `npm run test:coverage` (95% thresholds in `package.json` `nyc`, keep them). On Apple Silicon set `PUPPETEER_EXECUTABLE_PATH` to a local Chrome.
 6. Breaking change: major version bump in `package.js` (`version` and `onTest` dependency) and a note in `docs/migration-v*.md`.

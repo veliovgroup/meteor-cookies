@@ -174,7 +174,8 @@ Tinytest.addAsync('Server: Cordova origin allows query-string cookies', async (t
       origin: 'http://localhost:12000'
     },
     query: {
-      ___cookies___: encodeURIComponent('cordovaCookie=cordovaValue')
+      // WEBAPP QUERY PARSER (qs) DECODES VALUES
+      ___cookies___: 'cordovaCookie=cordovaValue'
     },
     _parsedUrl: {
       path: '/___cookie___/set'
@@ -853,4 +854,184 @@ Tinytest.addAsync('Server: {onCookies} hook - set various values', (test, next) 
     test.equal(cookiesInstance.destroy(), true, 'cookiesInstance.destroy() returns true when called first time');
     next();
   })();
+});
+
+Tinytest.addAsync('Server: manual middleware owner, dispatcher skip and handover chain', async (test) => {
+  const originalOwner = Cookies.__owner;
+  const originalInstances = Cookies.__instances;
+  let handlerValue;
+  // ISOLATE OWNERSHIP STATE; NO I/O BETWEEN SWAP AND RESTORE
+  Cookies.__instances = new Set();
+  Cookies.isMiddlewareRegistered = false;
+
+  try {
+    const warned = new Cookies({ name: `${test.test_case.name}-warned`, auto: false, onCookies() {} });
+    test.isFalse(Cookies.__hooks.has(warned.id), '{onCookies} with {auto: false} and no middleware is not registered');
+    warned.destroy();
+
+    const manual = new Cookies({
+      name: `${test.test_case.name}-manual`,
+      auto: false,
+      handler(cookies) {
+        handlerValue = cookies.get('manualCookie');
+      }
+    });
+    const middleware = manual.middleware();
+    test.equal(Cookies.__owner, manual, 'Manual middleware takes over');
+    test.isTrue(manual.__isManual, 'Owner is marked manual');
+
+    let dispatchedNext = false;
+    await Cookies.__dispatch({ headers: {}, url: '/' }, mockResponse(), () => { dispatchedNext = true; });
+    test.isTrue(dispatchedNext, 'Dispatcher skips manual owner');
+
+    const request = { headers: { cookie: 'manualCookie=manualValue' }, url: '/manual' };
+    let middlewareNext = false;
+    await middleware(request, mockResponse(), () => { middlewareNext = true; });
+    test.isTrue(middlewareNext, 'Manual middleware calls next');
+    test.instanceOf(request.Cookies, CookiesCore, 'Manual middleware sets req.Cookies');
+    test.equal(handlerValue, 'manualValue', 'Manual middleware runs handlers');
+
+    const successor = new Cookies({ name: `${test.test_case.name}-successor`, auto: false });
+    manual.destroy();
+    test.equal(Cookies.__owner, successor, '{auto: false} instance takes over when no {auto: true} instance is live');
+
+    const staleRequest = {};
+    let staleNext = false;
+    await middleware(staleRequest, mockResponse(), () => { staleNext = true; });
+    test.isTrue(staleNext, 'Middleware of destroyed owner calls next');
+    test.isUndefined(staleRequest.Cookies, 'Middleware of destroyed owner does nothing');
+
+    successor.destroy();
+    test.isNull(Cookies.__owner, 'No owner without live instances');
+    test.isFalse(Cookies.isMiddlewareRegistered, 'Middleware is unregistered without live instances');
+
+    dispatchedNext = false;
+    await Cookies.__dispatch({ headers: {}, url: '/' }, mockResponse(), () => { dispatchedNext = true; });
+    test.isTrue(dispatchedNext, 'Dispatcher calls next without owner');
+  } finally {
+    Cookies.__instances = originalInstances;
+    originalOwner.__takeOver();
+  }
+});
+
+Tinytest.add('Server: {runOnServer: false} instance', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, runOnServer: false });
+  test.isFalse(Cookies.__instances.has(cookiesInstance), 'Instance is not a middleware candidate');
+  test.throws(() => { cookiesInstance.middleware(); }, /runOnServer/, 'middleware() throws');
+  cookiesInstance.destroy();
+});
+
+Tinytest.add('Server: TTL and options edge cases', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false, TTL: 60000, allowedCordovaOrigins: 'http://localhost:12000' });
+  test.isFalse(cookiesInstance.allowedCordovaOrigins, 'String allowedCordovaOrigins is ignored');
+
+  const response = mockResponse();
+  const core = cookiesInstance.__getCookiesCore({ headers: {} }, response);
+  test.isTrue(core.set('ttl', 'value', null), 'set() accepts non-object options');
+  test.include(response.getHeader('Set-Cookie')[0], 'Expires=', 'TTL adds Expires');
+  cookiesInstance.destroy();
+
+  const defaultCore = new CookiesCore();
+  test.equal(defaultCore.NAME, 'COOKIES_CORE', 'CookiesCore works without options');
+  test.isTrue(defaultCore.set('noResponse', 'value'), 'set() without response updates cookies');
+  test.equal(defaultCore.get('noResponse'), 'value', 'Value is readable');
+  defaultCore.cookies = null;
+  test.equal(defaultCore.keys(), [], 'keys() without cookies returns empty array');
+});
+
+Tinytest.add('Server: Set-Cookie header on non-standard responses', (test) => {
+  const noSetHeader = new CookiesCore({ response: {} });
+  test.isTrue(noSetHeader.set('a', 'b'), 'set() works when response has no setHeader');
+
+  const headers = {};
+  const noGetHeader = new CookiesCore({ response: { setHeader(name, value) { headers[name] = value; } } });
+  noGetHeader.set('a', 'b');
+  noGetHeader.set('c', 'd');
+  test.equal(headers['Set-Cookie'], ['a=b; Path=/', 'c=d; Path=/'], 'Pending cookies accumulate without getHeader');
+
+  const response = mockResponse();
+  response.setHeader('Set-Cookie', 'other=value');
+  new CookiesCore({ response }).set('a', 'b');
+  test.equal(response.getHeader('Set-Cookie'), ['other=value', 'a=b; Path=/'], 'Single string Set-Cookie is kept');
+});
+
+Tinytest.addAsync('Server: failing callbacks and destroyed instances', async (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false });
+  const executed = await cookiesInstance.__execute({ headers: {} }, mockResponse(), new Map([['failing', () => { throw new Error('expected test error'); }]]));
+  test.isTrue(executed, 'Error in callback is caught');
+
+  cookiesInstance.destroy();
+  let nextCalled = false;
+  await cookiesInstance.__autoMiddleware({ headers: {}, url: '/' }, mockResponse(), () => { nextCalled = true; });
+  test.isTrue(nextCalled, 'Destroyed instance middleware calls next');
+});
+
+Tinytest.addAsync('Server: middleware handles requests without _parsedUrl or headers', async (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, auto: false });
+
+  const urlRequest = { headers: {}, url: '/plain' };
+  let nextCalled = false;
+  await cookiesInstance.__autoMiddleware(urlRequest, mockResponse(), () => { nextCalled = true; });
+  test.isTrue(nextCalled, 'Falls back to req.url');
+  test.instanceOf(urlRequest.Cookies, CookiesCore, 'req.Cookies is set');
+
+  const emptyRequest = {};
+  nextCalled = false;
+  await cookiesInstance.__autoMiddleware(emptyRequest, mockResponse(), () => { nextCalled = true; });
+  test.isTrue(nextCalled, 'Works without url and headers');
+
+  const response = mockResponse();
+  await cookiesInstance.__autoMiddleware({ url: '/___cookie___/set' }, response, () => {
+    test.fail('Endpoint middleware should not call next');
+  });
+  test.equal(response.statusCode, 200, 'Endpoint accepts request without headers');
+  test.isTrue(response.ended, 'Response ended');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: Cordova query-string payload variants', async (test) => {
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true
+  });
+  const headers = { origin: 'http://localhost:12000' };
+  const run = async (req) => {
+    const response = mockResponse();
+    await cookiesInstance.__autoMiddleware({ headers, ...req }, response, () => {
+      test.fail('Endpoint middleware should not call next');
+    });
+    return response.getHeader('Set-Cookie');
+  };
+
+  test.equal(await run({ url: '/___cookie___/set', query: { ___cookies___: ['a=1', 'b=2'] } }), ['a=1; Path=/'], 'First value of parsed query array is used');
+  test.isUndefined(await run({ url: '/___cookie___/set' }), 'No query string');
+  test.isUndefined(await run({ url: '/___cookie___/set?flag&other=1' }), 'No ___cookies___ param');
+  test.isUndefined(await run({ url: '/___cookie___/set?___cookies___' }), 'Empty ___cookies___ param');
+  cookiesInstance.destroy();
+});
+
+Tinytest.addAsync('Server: Cordova query-string cookies are decoded once', async (test) => {
+  const cookiesInstance = new Cookies({
+    name: test.test_case.name,
+    auto: false,
+    allowQueryStringCookies: true,
+    allowedCordovaOrigins: true
+  });
+  // CLIENT SENDS `encodeURIComponent(serialize(...))`, VALUE `v%41` MUST NOT TURN INTO `vA`
+  const pair = serialize('literal', 'v%41').cookieString.split('; ')[0];
+  const headers = { origin: 'http://localhost:12000' };
+  const read = async (req) => {
+    let value;
+    const hookId = Symbol('decode-test');
+    Cookies.__hooks.set(hookId, (cookies) => { value = cookies.get('literal'); });
+    await cookiesInstance.__autoMiddleware({ headers, ...req }, mockResponse(), () => {});
+    Cookies.__hooks.delete(hookId);
+    return value;
+  };
+
+  test.equal(await read({ url: `/___cookie___/set?___cookies___=${encodeURIComponent(pair)}` }), 'v%41', 'Raw path value');
+  test.equal(await read({ url: '/___cookie___/set', query: { ___cookies___: pair } }), 'v%41', 'Parsed req.query value');
+  cookiesInstance.destroy();
 });

@@ -87,9 +87,10 @@ const isSameOriginRequest = (headers) => {
  * @param {IncomingMessage|object} req
  * @param {string} requestPath
  * @returns {string|boolean}
- * @summary Read encoded Cordova cookie payload from parsed query or request path
+ * @summary Read decoded Cordova cookie payload from parsed query or request path
  */
 const getQueryStringCookies = (req, requestPath) => {
+  // `req.query` VALUES ARE ALREADY DECODED BY THE QUERY PARSER
   const query = req.query || {};
   let queryCookies = query.___cookies___;
   if (helpers.isArray(queryCookies)) {
@@ -112,7 +113,7 @@ const getQueryStringCookies = (req, requestPath) => {
     const key = eqIndex === -1 ? pair : pair.slice(0, eqIndex);
 
     if (key === '___cookies___') {
-      return eqIndex === -1 ? '' : pair.slice(eqIndex + 1);
+      return eqIndex === -1 ? '' : helpers.tryDecode(pair.slice(eqIndex + 1), decodeURIComponent);
     }
   }
 
@@ -125,18 +126,14 @@ const getQueryStringCookies = (req, requestPath) => {
  * @name parseQueryStringCookies
  * @param {string|boolean} queryCookies
  * @returns {object}
- * @summary Parse encoded Cordova cookie payload without throwing on malformed input
+ * @summary Parse decoded Cordova cookie payload
  */
 const parseQueryStringCookies = (queryCookies) => {
   if (typeof queryCookies !== 'string' || !queryCookies) {
     return {};
   }
 
-  try {
-    return helpers.parse(decodeURIComponent(queryCookies));
-  } catch (_error) {
-    return {};
-  }
+  return helpers.parse(queryCookies);
 };
 
 /**

@@ -281,3 +281,35 @@ Tinytest.addAsync('cookies: sendAsync - add cookie on server', async (test) => {
     cookies.remove();
   }
 });
+
+Tinytest.addAsync('cookies: send() / sendAsync() with {runOnServer: false}', async (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, runOnServer: false });
+  await new Promise((resolve) => {
+    cookiesInstance.send((error) => {
+      test.instanceOf(error, Meteor.Error, 'send() returns error');
+      test.include(error.reason, 'runOnServer', 'Error mentions runOnServer');
+      resolve();
+    });
+  });
+  await test.throwsAsync(async () => { await cookiesInstance.sendAsync(); }, /runOnServer/, 'sendAsync() throws');
+  test.isUndefined(cookiesInstance.send(), 'send() works without callback');
+});
+
+Tinytest.add('Class - Cookies instance - __prepareSendData edge cases', (test) => {
+  const cookiesInstance = new Cookies({ name: test.test_case.name, runOnServer: false, allowQueryStringCookies: true, allowedCordovaOrigins: /^http:\/\/localhost$/ });
+  test.instanceOf(cookiesInstance.allowedCordovaOrigins, RegExp, 'RegExp allowedCordovaOrigins is kept');
+  const origiscordova = Meteor.isCordova;
+  Meteor.isCordova = true;
+
+  cookiesInstance.cookies = {};
+  const empty = cookiesInstance.__prepareSendData();
+
+  // `a;` IS ESCAPED TO `a%3B`, SO BOTH KEYS SERIALIZE TO THE SAME PAIR
+  cookiesInstance.cookies = { 'a;': 'same', 'a%3B': 'same' };
+  const duplicate = cookiesInstance.__prepareSendData();
+  Meteor.isCordova = origiscordova;
+
+  test.equal(empty.query, '', 'No query without cookies');
+  test.isTrue(empty.path.endsWith('/___cookie___/set'), 'Relative path without cookies');
+  test.equal(duplicate.query, `?___cookies___=${encodeURIComponent('a%3B=same')}`, 'Duplicate pairs are sent once');
+});
