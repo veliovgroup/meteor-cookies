@@ -1,30 +1,84 @@
 ---
 name: ostrio-cookies
-description: Rules for editing, reviewing, and testing the ostrio:cookies Meteor package (cookies.js, helpers.js, index.d.ts, tests, docs).
+description: Use when a Meteor.js app imports `meteor/ostrio:cookies` or lists `ostrio:cookies` in `.meteor/packages` or `.meteor/versions`, and the task reads, sets, or removes cookies on the client or server, touches `req.Cookies`, `send()`, `sendAsync()`, `onCookies`, or `CookiesCore`, involves cookies missing on the server or stale on the client, Cordova or Meteor-Desktop cookie sync, or an upgrade of the package between major versions.
+license: BSD-3-Clause
+compatibility: Meteor.js apps that use the ostrio:cookies Atmosphere package
+metadata:
+  author: veliovgroup
+  version: "3.0.0"
 ---
 
 # ostrio:cookies
 
-## Invariants
-- Zero runtime deps. Package ships only `cookies.js`, `helpers.js`, `index.d.ts` (server asset for `zodern:types`).
-- One server middleware: `Cookies.__dispatch` attached once, delegates to `Cookies.__owner`. Callbacks live in static `__handlers` / `__hooks` maps. Destroying the owner hands over to a live instance from `Cookies.__instances`.
-- `/___cookie___/set` returns 403 for cross-site requests, never echoes the request `Cookie` header, and sets only Cordova/Desktop query-string cookies from `allowedCordovaOrigins`.
-- Only `remove()` without arguments removes all cookies. `expires: 0` means session cookie.
-- `serialize()` must reject or escape `;` in names, `path`, `domain`. Values: string, number, boolean, null, object, array (JSON wrapper, circular-safe).
-- `index.d.ts` is an ES module (top-level `export`). zodern:types wraps it as `meteor/ostrio:cookies`. No ambient `declare module 'meteor/...'`.
-- GitHub Actions pinned by commit SHA with a version comment, `permissions` read-only by default (OpenSSF Scorecard).
-- Public API is stable. Behavior changes need tests, README or `docs/` update, and a release note.
+Isomorphic cookies for Meteor. Client and server share one API: `get`, `set`, `remove`, `has`, `keys`.
 
-## Style
-- 2 spaces, single quotes, semicolons, `const` arrow functions, `void 0` for undefined returns.
-- JSDoc on every method with `@locus`, `@param`, `@returns`, `@summary`. Private members use the `__` prefix.
-- Type checks via `helpers.is*`. Errors via `Meteor.Error`, warnings via `Meteor._debug`.
-- Hot paths (parse, serialize, middleware): single pass, no per-request allocations that can be hoisted.
+## Match the installed version first
 
-## Change checklist
-1. Add a failing Tinytest in `tests/both.js`, `tests/server.js`, or `tests/client.js`.
-2. Fix the code.
-3. Update `index.d.ts` and `index.test-d.ts` when the API or types change.
-4. README: short, example-driven. Details, edge cases, Cordova notes: `docs/*.md`.
-5. Run `npm test` (Tinytest via mtest plus tsd) and `npm run test:coverage` (95% thresholds in `package.json` `nyc`, keep them). On Apple Silicon set `PUPPETEER_EXECUTABLE_PATH` to a local Chrome.
-6. Breaking change: major version bump in `package.js` (`version` and `onTest` dependency) and a note in `docs/migration-v*.md`.
+1. Read the `ostrio:cookies@` line in `.meteor/versions` and the release in `.meteor/release`.
+2. This skill describes v3. On v2, or when upgrading from v2, read [migration-v3.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/migration-v3.md) before writing code. In v2 `remove('')` deletes every cookie, and `/___cookie___/set` echoes request cookies and accepts cross-site requests.
+3. On a newer major, read `docs/migration-v<major>.md` in the same repository.
+4. Meteor 3: `WebApp.handlers` (Express) and `WebApp.connectHandlers` are the same object. Meteor 2: only `WebApp.connectHandlers` (Connect).
+
+## Usage
+
+```js
+import { Meteor } from 'meteor/meteor';
+import { Cookies } from 'meteor/ostrio:cookies';
+
+// Create once, before any route is registered
+const cookies = new Cookies({ TTL: 31557600000 }); // default expiry in ms
+
+if (Meteor.isClient) {
+  cookies.set('locale', 'en', { secure: true, sameSite: 'Lax' });
+  cookies.get('locale'); // 'en'
+  // Runs server `onCookies` hooks, then re-reads document.cookie
+  cookies.sendAsync().then((response) => response.ok);
+}
+
+if (Meteor.isServer) {
+  const { WebApp } = require('meteor/webapp');
+  WebApp.connectHandlers.use((req, _res, next) => {
+    // req.Cookies is the per-request CookiesCore. `cookies` above holds no request data
+    req.Cookies.set('seen', true, { httpOnly: true });
+    next();
+  });
+}
+```
+
+## Quick reference
+
+| Call | Where | Notes |
+|---|---|---|
+| `get(key)` | both | `undefined` when missing |
+| `set(key, value, opts)` | both | Value: string, number, boolean, null, object, array |
+| `remove(key, path, domain)` | both | `remove()` without arguments removes all |
+| `has(key)`, `keys()` | both | |
+| `send(cb)`, `sendAsync()` | client | Request `/___cookie___/set` |
+| `middleware()`, `destroy()` | server | Throw on the client |
+| `new CookiesCore({ _cookies, setCookie, response })` | both | Parses a cookie string or a `Set-Cookie` header |
+
+- `set` options: `path` (default `/`), `domain`, `expires` (`Date`, ms timestamp, `Infinity`, or `0` for a session cookie), `maxAge` (seconds), `secure`, `httpOnly`, `sameSite`, `partitioned`, `priority`.
+- Server options: `handler(cookies)` runs on every HTTP request, `onCookies(cookies)` runs when the client calls `send()` or `sendAsync()`. Both receive a `CookiesCore`, and `set()` or `remove()` on it adds `Set-Cookie` to that response. The request is `cookies.response.req`.
+- All `new Cookies()` instances share one middleware. With `auto: false`, mount `cookies.middleware()` yourself.
+
+## Common mistakes
+
+- **Reading cookies from the `new Cookies()` instance on the server.** It has no request. Use `req.Cookies`, or the argument of `handler` and `onCookies`.
+- **`req.Cookies` is `undefined`.** `new Cookies()` ran after the route was registered, or `ostrio:cookies` sits below the package that registers routes in `.meteor/packages`. `WebApp.rawHandlers` and `WebApp.rawConnectHandlers` run before it.
+- **Cookies in methods or publications.** DDP has no `req.Cookies`, and `this.connection.httpHeaders` has no `cookie` header. Pass the value as an argument, or handle it in HTTP middleware.
+- **`httpOnly` on the client.** Browsers reject it from JavaScript. Set it on the server, before response headers are sent.
+- **Stale client value.** The client instance reads `document.cookie` once. Cookies set by a server response appear after a page reload or after `sendAsync()`.
+- **Types after a reload.** A number comes back as a string, on the server too. The strings `'true'`, `'false'`, `'null'` come back as `true`, `false`, `null`.
+- **`remove(key)` leaves the cookie.** Pass the same `path` and `domain` used in `set()`.
+- **`onCookies` never runs.** A manual `.middleware()` doesn't serve `/___cookie___/set`. Use the default `auto: true`.
+- **Cordova and Meteor-Desktop.** `send()` transfers cookies only with `{ allowQueryStringCookies: true, allowedCordovaOrigins: true }` on client and server. Values travel in the URL, so don't sync secrets.
+
+## TypeScript
+
+Types ship with the package and load through `zodern:types`. `req.Cookies` is typed on Node's `IncomingMessage` as `CookiesCore | undefined`. Narrow a value with `cookies.get<string>('locale')`.
+
+## More
+
+- [README](https://github.com/veliovgroup/Meteor-Cookies#api): full API
+- [docs/server.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/server.md): middleware order, handlers, `/___cookie___/set` rules
+- [docs/cordova.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/docs/cordova.md): Cordova and Meteor-Desktop setup

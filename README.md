@@ -27,12 +27,14 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
 - 👨‍💻 Supports `String`, `Number`, `Array`, `Object`, `Boolean`, and `null` as cookie value types
 - ♿ IE support, thanks to [@derwok](https://github.com/derwok)
 - 📦 Shipped with TypeScript [types](https://github.com/veliovgroup/meteor-cookies/blob/master/index.d.ts)
+- 🤖 Shipped with an [AI agent skill](#ai-agent-skill) for Claude Code, Codex, Cursor, and other coding agents
 - 📦 Looking for persistent *Client* (Browser) storage? Try the [`ClientStorage` package](https://github.com/veliovgroup/Client-Storage#persistent-client-browser-storage).
 
 ## ToC:
 
 - [Installation](#installation)
 - [Import](#es6-import)
+- [AI agent skill](#ai-agent-skill)
 - [FAQ](#faq)
 - [API](#api)
   - [`new Cookies()` constructor](#new-cookies-constructor) – Create a new `Cookies` instance
@@ -67,6 +69,25 @@ Upgrading from v2? See [docs/migration-v3.md](https://github.com/veliovgroup/Met
 ```js
 import { Cookies } from 'meteor/ostrio:cookies';
 ```
+
+## AI agent skill
+
+The [`ostrio-cookies` skill](https://github.com/veliovgroup/Meteor-Cookies/blob/master/.agents/skills/ostrio-cookies/SKILL.md) gives a coding agent the API, the common client and server mistakes, the Cordova setup, and the migration notes for the package version in your app. It follows the [Agent Skills](https://agentskills.io) format.
+
+Run in the root of your Meteor app:
+
+```shell
+npx skills add veliovgroup/Meteor-Cookies --skill ostrio-cookies
+```
+
+Or copy the file without extra tools:
+
+```shell
+mkdir -p .agents/skills/ostrio-cookies
+curl -fsSL https://raw.githubusercontent.com/veliovgroup/Meteor-Cookies/master/.agents/skills/ostrio-cookies/SKILL.md -o .agents/skills/ostrio-cookies/SKILL.md
+```
+
+Claude Code reads skills from `.claude/skills/`. For a manual copy, use that directory instead of `.agents/skills/`.
 
 ## FAQ
 
