@@ -1,5 +1,5 @@
 import { Cookies, CookiesCore } from 'meteor/ostrio:cookies';
-import { antiCircular, clone, deserialize, isFunction, parse, serialize, tryDecode } from '../helpers';
+import { antiCircular, deserialize, isFunction, parse, serialize, tryDecode } from '../helpers';
 import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
 
@@ -83,18 +83,6 @@ Tinytest.add('Class - CookiesCore instance', (test) => {
   test.include(cookiesCoreInstance, 'allowedCordovaOrigins');
   test.include(cookiesCoreInstance, 'originRE');
   test.include(cookiesCoreInstance, 'cookies');
-});
-
-Tinytest.add('helpers: clone returns separate shallow arrays and objects', (test) => {
-  const array = ['one', 'two'];
-  const object = { key: 'value' };
-  const arrayClone = clone(array);
-  const objectClone = clone(object);
-
-  test.equal(arrayClone, array, 'Array clone has same values');
-  test.isTrue(arrayClone !== array, 'Array clone is a separate array');
-  test.equal(objectClone, object, 'Object clone has same values');
-  test.isTrue(objectClone !== object, 'Object clone is a separate object');
 });
 
 Tinytest.add('helpers: parse supports Object prototype cookie names', (test) => {
@@ -253,16 +241,28 @@ Tinytest.add('helpers: parse edge-case inputs', (test) => {
   test.equal(tryDecode('%E0%A4%A', decodeURIComponent), '%E0%A4%A', 'tryDecode returns input on error');
 });
 
-Tinytest.add('helpers: clone, antiCircular and deserialize edge cases', (test) => {
-  const obj = { a: 1 };
-  test.equal(clone(obj), obj, 'Object is cloned');
-  test.isFalse(clone(obj) === obj, 'Object clone is a copy');
-  test.equal(clone(1), 1, 'Primitive is returned as is');
+Tinytest.add('helpers: antiCircular and deserialize edge cases', (test) => {
   test.equal(antiCircular('str'), 'str', 'antiCircular returns primitive as is');
   test.equal(deserialize(1), 1, 'Non-string is returned as is');
   test.equal(deserialize('JSON.parse()'), 'JSON.parse()', 'Empty JSON wrapper stays string');
   test.equal(deserialize('JSON.parse({broken)'), 'JSON.parse({broken)', 'Invalid JSON wrapper stays string');
   test.equal(deserialize('true'), true, 'Typed value is parsed');
+});
+
+Tinytest.add('helpers: antiCircular drops circular references only', (test) => {
+  const shared = { x: 1 };
+  const value = { a: shared, b: shared, list: [shared, shared] };
+  test.equal(JSON.parse(antiCircular(value)), { a: { x: 1 }, b: { x: 1 }, list: [{ x: 1 }, { x: 1 }] }, 'Repeated non-circular references are kept');
+  test.equal(serialize('shared', value).sanitizedValue, { a: { x: 1 }, b: { x: 1 }, list: [{ x: 1 }, { x: 1 }] }, 'serialize() keeps repeated references');
+
+  const circular = { n: 1, child: { m: 2 } };
+  circular.self = circular;
+  circular.child.parent = circular;
+  test.equal(JSON.parse(antiCircular(circular)), { n: 1, child: { m: 2 } }, 'Circular references are dropped');
+
+  const circularArray = [1];
+  circularArray.push(circularArray);
+  test.equal(JSON.parse(antiCircular(circularArray)), [1, null], 'Circular array item becomes null');
 });
 
 Tinytest.add('helpers: cookie names with percent sequences round-trip', (test) => {
@@ -272,4 +272,25 @@ Tinytest.add('helpers: cookie names with percent sequences round-trip', (test) =
     test.equal(Object.keys(parsed), [name], `Name "${name}" round-trips`);
   }
   test.isTrue(serialize('100%', 'value').cookieString.startsWith('100%=value'), 'Literal % without hex digits stays raw');
+});
+
+Tinytest.add('helpers: parse strips only balanced quotes', (test) => {
+  test.equal({ ...parse('a="abc; b="; c=""; d="x"') }, { a: '"abc', b: '"', c: '', d: 'x' }, 'Unbalanced quote is kept');
+});
+
+Tinytest.add('helpers: serialize prevents attribute injection via sameSite', (test) => {
+  test.throws(() => serialize('a', 'b', { sameSite: 'Lax; Domain=evil.com' }), /sameSite is invalid/);
+  test.isTrue(serialize('a', 'b', { sameSite: 'None' }).cookieString.endsWith('; SameSite=None'), 'Valid sameSite is written');
+});
+
+Tinytest.add('Class - CookiesCore set() with deprecated expire option overrides TTL', (test) => {
+  const cookies = new CookiesCore({ TTL: 60000 });
+  const response = { headers: {}, setHeader(name, value) { this.headers[name] = value; }, getHeader(name) { return this.headers[name]; } };
+  cookies.response = response;
+  cookies.set('legacy', 'value', { expire: Infinity });
+
+  if (Meteor.isServer) {
+    test.equal(response.getHeader('Set-Cookie'), ['legacy=value; Path=/; Expires=Fri, 31 Dec 9999 23:59:59 GMT'], '`expire` alias is not replaced by TTL');
+  }
+  cookies.remove('legacy');
 });

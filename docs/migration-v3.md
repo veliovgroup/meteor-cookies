@@ -39,9 +39,17 @@ Action: on Cordova and Meteor-Desktop, set `allowedCordovaOrigins` on the *Serve
 
 Names with `;`, `=`, or a literal percent sequence such as `%41` or `%u0041` are now percent-encoded in `Set-Cookie`. `get()` and `has()` decode them back. A cookie with such a name that v2 wrote raw can't be removed by `remove(name)` in v3. v2 couldn't read those names back correctly either, for example `a%41` came back as `aA`.
 
-## `path` or `domain` containing `;`
+## `path`, `domain`, or `sameSite` containing `;`
 
-`set()` and `remove()` throw `Meteor.Error` with `option path is invalid` or `option domain is invalid`. In v2 the value was written as-is and added extra cookie attributes.
+`set()` and `remove()` throw `Meteor.Error` with `option path is invalid`, `option domain is invalid`, or `option sameSite is invalid`. In v2 the value was written as-is and added extra cookie attributes.
+
+## Object and array values with repeated references
+
+v2 dropped every object that appeared more than once in a value, even without a cycle. `{ a: tag, b: tag }` was stored as `{ a: tag }`. v3 drops only circular references.
+
+## `TTL` and the deprecated `expire` option
+
+`set(key, value, { expire })` on an instance with `TTL` now uses `expire`. v2 replaced it with the `TTL` date.
 
 ## `expires: 0`
 

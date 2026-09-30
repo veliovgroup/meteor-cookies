@@ -94,26 +94,6 @@ export const hasOwn = (obj, key) => {
 
 /**
  * @function
- * @private
- * @name clone
- * @param {unknown} obj
- * @returns {unknown}
- * @summary Clone `obj` if `obj` is Object or Array
- */
-export const clone = (obj) => {
-  if (isArray(obj)) {
-    return [...obj];
-  }
-
-  if (isObject(obj)) {
-    return { ...obj };
-  }
-
-  return obj;
-};
-
-/**
- * @function
  * @name customEscape
  * @param {string} str
  * @returns {string}
@@ -294,7 +274,7 @@ export const parse = (str, options) => {
     // NAMES ARE WRITTEN BY `customEscape`; DECODING TWICE CORRUPTS LITERAL `%XX`
     key = customUnescape(pair.slice(0, eqIndx).trim());
     val = pair.slice(++eqIndx).trim();
-    if (val[0] === '"') {
+    if (val.length > 1 && val[0] === '"' && val[val.length - 1] === '"') {
       val = val.slice(1, -1);
     }
 
@@ -317,14 +297,19 @@ export const antiCircular = (_obj) => {
     return _obj;
   }
 
-  const object = clone(_obj);
-  const cache = new WeakMap();
-  return JSON.stringify(object, (_key, value) => {
+  // TRACK ANCESTORS ONLY, SO REPEATED NON-CIRCULAR REFERENCES ARE KEPT
+  // `this` IS THE OBJECT HOLDING `value`
+  const ancestors = [];
+  return JSON.stringify(_obj, function (_key, value) {
     if (typeof value === 'object' && value !== null) {
-      if (cache.get(value)) {
+      while (ancestors.length && ancestors[ancestors.length - 1] !== this) {
+        ancestors.pop();
+      }
+
+      if (ancestors.includes(value)) {
         return void 0;
       }
-      cache.set(value, true);
+      ancestors.push(value);
     }
     return value;
   });
@@ -433,8 +418,14 @@ export const serialize = (key, val, opt = {}) => {
     pairs.push('First-Party-Only');
   }
 
-  if (options.sameSite) {
-    pairs.push(options.sameSite === true ? 'SameSite' : `SameSite=${options.sameSite}`);
+  if (options.sameSite === true) {
+    pairs.push('SameSite');
+  } else if (options.sameSite) {
+    const sameSite = `${options.sameSite}`;
+    if (!fieldContentRegExp.test(sameSite) || sameSite.includes(';')) {
+      throw new Meteor.Error(404, 'option sameSite is invalid');
+    }
+    pairs.push(`SameSite=${sameSite}`);
   }
 
   return { cookieString: pairs.join('; '), sanitizedValue };

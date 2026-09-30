@@ -215,7 +215,7 @@ class CookiesCore {
   set(key, value, opts = {}) {
     if (key && !helpers.isUndefined(value)) {
       const cookieOpts = helpers.isObject(opts) ? { ...opts } : {};
-      if (helpers.isNumber(this.TTL) && cookieOpts.expires === undefined) {
+      if (helpers.isNumber(this.TTL) && cookieOpts.expires === undefined && cookieOpts.expire === undefined) {
         cookieOpts.expires = new Date(+new Date() + this.TTL);
       }
       const { cookieString, sanitizedValue } = helpers.serialize(key, value, cookieOpts);
@@ -282,7 +282,7 @@ class CookiesCore {
    * @locus Anywhere
    * @memberOf CookiesCore
    * @name has
-   * @param {string} key - The name of the cookie to create/overwrite
+   * @param {string} key - The name of the cookie to check
    * @param {string} _tmp - Unparsed string instead of user's cookies
    * @summary Check whether a cookie exists in the current position.
    * @returns {boolean}
@@ -446,14 +446,14 @@ class CookiesCore {
 class Cookies extends CookiesCore {
   /**
    * @summary __handlers - Map with all registered `handler` callbacks
-   * @type {Map<string, function(cookies: CookiesCore): void>}
+   * @type {Map<symbol, function(cookies: CookiesCore): void | Promise<void>>}
    * @static
    */
   static __handlers = new Map();
 
   /**
    * @summary __hooks - Map with all registered `onCookies` hooks
-   * @type {Map<string, function(req: IncomingMessage, res: ServerResponse, next: function(): void): void>}
+   * @type {Map<symbol, function(cookies: CookiesCore): void | Promise<void>>}
    * @static
    */
   static __hooks = new Map();
@@ -612,7 +612,7 @@ class Cookies extends CookiesCore {
   /**
    * @locus Server
    * @memberOf Cookies
-   * @name Destroy
+   * @name destroy
    * @summary Unregister hooks, callbacks, and middleware
    * @throws {Meteor.Error}
    * @returns {boolean}
