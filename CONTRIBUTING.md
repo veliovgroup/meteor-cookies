@@ -1,3 +1,6 @@
+### I found a security vulnerability:
+Don't open a public issue. Follow [SECURITY.md](SECURITY.md).
+
 ### I'm having an issue:
  1. Search [issues](https://github.com/veliovgroup/Meteor-Cookies/issues), maybe your issue is already solved
  2. Before submitting an issue make sure it's only related to `ostrio:cookies` package

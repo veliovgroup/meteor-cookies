@@ -1,5 +1,15 @@
-[![support](https://img.shields.io/badge/support-GitHub-white)](https://github.com/sponsors/dr-dimitru)
-[![support](https://img.shields.io/badge/support-PayPal-white)](https://paypal.me/veliovgroup)
+[![Meteor.js][badge-meteor]][meteor-url]
+[![Release][badge-release]][release-url]
+[![CI][badge-ci]][ci-url]
+[![Coverage][badge-cov]](#running-tests)
+[![License: BSD-3-Clause][badge-license]][license-url]
+[![TypeScript][badge-ts]][ts-url]
+[![zero dependencies][badge-deps]][meteor-url]
+[![Last commit][badge-commit]][commits-url]
+[![OpenSSF Scorecard][badge-scorecard]][scorecard-url]
+[![Sponsor][badge-sponsor]][sponsor-url]
+[![Donate][badge-donate]][donate-url]
+<a href="https://bridge-cdn.com/?ref=github-cookies-repo-top"><img src="https://bridge-cdn.com/favicon.svg" alt="Bridge CDN" height="20"></a>
 <a href="https://ostr.io/info/built-by-developers-for-developers?ref=github-cookies-repo-top"><img src="https://ostr.io/apple-touch-icon-60x60.png" alt="ostr.io" height="20"></a>
 <a href="https://meteor-files.com/?ref=github-cookies-repo-top"><img src="https://meteor-files.com/apple-touch-icon-60x60.png" alt="meteor-files.com" height="20"></a>
 
@@ -41,7 +51,8 @@ Isomorphic and bulletproof 🍪 cookie management for Meteor applications with s
   - [Server Usage](#example-server-usage)
   - [More examples](#more-examples)
 - [Running Tests](#running-tests)
-- [Support Our Open Source Contributions](#support-our-open-source-contributions)
+- [Security](#security)
+- [Support our open source contributions](#support-our-open-source-contributions)
 
 ## Installation
 
@@ -392,11 +403,37 @@ On Apple Silicon, the Chromium bundled with `mtest` is x86-only. Point it to a l
 PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm test
 ```
 
-## Support Our Open Source Contributions
+## Security
 
+Report vulnerabilities privately, see [SECURITY.md](https://github.com/veliovgroup/Meteor-Cookies/blob/master/SECURITY.md).
+
+## Support our open source contributions
+
+- Try [🌉 Bridge CDN](https://bridge-cdn.com/?ref=github-cookies-repo-footer) - A SEO-focused alternative to Cloudflare. CDN, DNS, IndexNow, Prerender, SEO, Edge Computing.
 - Upload and share files using [☄️ meteor-files.com](https://meteor-files.com/?ref=github-cookies-repo-footer) — Continue interrupted file uploads without losing any progress. There is nothing that will stop Meteor from delivering your file to the desired destination
 - Use [▲ ostr.io](https://ostr.io?ref=github-cookies-repo-footer) for [Server Monitoring](https://snmp-monitoring.com), [Web Analytics](https://ostr.io/info/web-analytics?ref=github-cookies-repo-footer), [WebSec](https://domain-protection.info), [Web-CRON](https://web-cron.info) and [SEO Pre-rendering](https://prerendering.com) of a website
 - Star on [GitHub](https://github.com/veliovgroup/Meteor-Cookies)
 - Star on [Atmosphere](https://atmospherejs.com/ostrio/cookies)
 - [Sponsor via GitHub](https://github.com/sponsors/dr-dimitru)
 - [Support via PayPal](https://paypal.me/veliovgroup)
+
+[badge-meteor]: https://img.shields.io/badge/Meteor.js-ostrio%3Acookies-red?logo=meteor&logoColor=white
+[meteor-url]: https://packosphere.com/ostrio/cookies
+[badge-release]: https://img.shields.io/github/v/release/veliovgroup/Meteor-Cookies
+[release-url]: https://github.com/veliovgroup/Meteor-Cookies/releases
+[badge-ci]: https://github.com/veliovgroup/Meteor-Cookies/actions/workflows/test_suite.yml/badge.svg?branch=master
+[ci-url]: https://github.com/veliovgroup/Meteor-Cookies/actions/workflows/test_suite.yml
+[badge-cov]: https://img.shields.io/badge/coverage-~99%25-brightgreen
+[badge-license]: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+[license-url]: https://github.com/veliovgroup/Meteor-Cookies/blob/master/LICENSE
+[badge-ts]: https://img.shields.io/badge/TypeScript-ready-blue
+[ts-url]: https://github.com/veliovgroup/Meteor-Cookies/blob/master/index.d.ts
+[badge-deps]: https://img.shields.io/badge/dependencies-0-brightgreen
+[badge-commit]: https://img.shields.io/github/last-commit/veliovgroup/Meteor-Cookies
+[commits-url]: https://github.com/veliovgroup/Meteor-Cookies/commits/master
+[badge-scorecard]: https://api.scorecard.dev/projects/github.com/veliovgroup/Meteor-Cookies/badge
+[scorecard-url]: https://scorecard.dev/viewer/?uri=github.com/veliovgroup/Meteor-Cookies
+[badge-sponsor]: https://img.shields.io/github/sponsors/dr-dimitru?label=Sponsor
+[sponsor-url]: https://github.com/sponsors/dr-dimitru
+[badge-donate]: https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white
+[donate-url]: https://paypal.me/veliovgroup

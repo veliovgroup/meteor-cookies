@@ -8,21 +8,26 @@ on:
       - master
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   tests:
     name: Meteor package tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
       - name: cache dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-22-${{ hashFiles('**/package-lock.json') }}
@@ -30,11 +35,12 @@ jobs:
             ${{ runner.os }}-node-22-
 
       - name: Setup meteor
-        uses: meteorengineer/setup-meteor@v3
+        uses: meteorengineer/setup-meteor@5c24ea96e0e0d1faa1ee1d010740be0ff30a3527 # v3.0.1
         with:
           meteor-release: '3.4'
 
       - run: |
-          meteor npm install
+          meteor npm ci
           meteor npm run test:coverage
           meteor npm run test:types
+

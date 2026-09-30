@@ -12,6 +12,7 @@ description: Rules for editing, reviewing, and testing the ostrio:cookies Meteor
 - Only `remove()` without arguments removes all cookies. `expires: 0` means session cookie.
 - `serialize()` must reject or escape `;` in names, `path`, `domain`. Values: string, number, boolean, null, object, array (JSON wrapper, circular-safe).
 - `index.d.ts` is an ES module (top-level `export`). zodern:types wraps it as `meteor/ostrio:cookies`. No ambient `declare module 'meteor/...'`.
+- GitHub Actions pinned by commit SHA with a version comment, `permissions` read-only by default (OpenSSF Scorecard).
 - Public API is stable. Behavior changes need tests, README or `docs/` update, and a release note.
 
 ## Style
