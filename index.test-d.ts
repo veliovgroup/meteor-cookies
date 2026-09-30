@@ -1,4 +1,4 @@
-import type { IncomingMessage } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { expectAssignable, expectType } from 'tsd';
 import {
   Cookies,
@@ -91,4 +91,14 @@ expectAssignable<CookieRequest>(request);
 expectAssignable<CookieResponse>(response);
 
 declare const req: IncomingMessage;
+declare const res: ServerResponse;
 expectType<CookiesCore | undefined>(req.Cookies);
+
+// Node.js request and response are accepted without casts
+expectAssignable<CookieRequest>(req);
+expectAssignable<CookieResponse>(res);
+expectType<CookiesCore>(new CookiesCore({ _cookies: req.headers.cookie || '', response: res }));
+
+// Middleware is accepted by Connect-style `WebApp.connectHandlers.use()`
+type ConnectHandler = (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void;
+expectAssignable<ConnectHandler>(cookies.middleware());

@@ -64,3 +64,5 @@ import { Cookies, CookiesCore, type CookieOptions } from 'meteor/ostrio:cookies'
 ```
 
 New typed members: `NAME`, `id`, `response`, `isDestroyed`, `Cookies.isMiddlewareRegistered`. `req.Cookies` is typed on Node's `IncomingMessage`.
+
+`CookieRequest` and `CookieResponse` no longer have a `[key: string]: unknown` index signature. With it, TypeScript rejected `WebApp.connectHandlers.use(cookies.middleware())` and `new CookiesCore({ response })` with Node's `ServerResponse`. Code that read untyped properties from these two types needs a cast.

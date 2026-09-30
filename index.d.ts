@@ -26,6 +26,7 @@ export interface MeteorError extends Error {
 
 /**
  * Minimal request shape used by middleware and handlers.
+ * Node.js `IncomingMessage`, Connect, and Express requests are assignable to it.
  */
 export interface CookieRequest {
   headers?: {
@@ -34,26 +35,24 @@ export interface CookieRequest {
     [key: string]: string | string[] | undefined;
   };
   query?: {
-    ___cookies___?: string;
-    [key: string]: string | string[] | undefined;
+    [key: string]: unknown;
   };
   url?: string;
   originalUrl?: string;
   _parsedUrl?: {
-    path?: string;
+    path?: string | null;
   };
   Cookies?: CookiesCore;
-  [key: string]: unknown;
 }
 
 /**
  * Minimal response shape used by CookiesCore.
+ * Node.js `ServerResponse` is assignable to it.
  */
 export interface CookieResponse {
   req?: CookieRequest;
   setHeader(name: string, value: string | string[]): void;
   getHeader?(name: string): string | number | string[] | undefined;
-  [key: string]: unknown;
 }
 
 /**
