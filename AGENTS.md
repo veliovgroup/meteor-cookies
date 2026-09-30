@@ -23,6 +23,7 @@ These are the rules for editing this package. `.agents/skills/ostrio-cookies/SKI
 - Only `remove()` without arguments removes all cookies. `expires: 0` means session cookie.
 - `serialize()` must reject or escape `;` in names, `path`, `domain`, `sameSite`. `parse(serialize(name))` must return the same name. Values: string, number, boolean, null, object, array (JSON wrapper, circular-safe).
 - `index.d.ts` is an ES module (top-level `export`). zodern:types wraps it as `meteor/ostrio:cookies`. No ambient `declare module 'meteor/...'`. Node's `IncomingMessage` and `ServerResponse` must stay assignable to `CookieRequest` and `CookieResponse` (no index signatures).
+- Keep `package-types.json`. The package isn't built from it and it isn't shipped, but the zodern:types publish hook reads it and `meteor publish` fails without it.
 - GitHub Actions pinned by commit SHA with a version comment, `permissions` read-only by default (OpenSSF Scorecard).
 - Public API is stable. Behavior changes need tests, README or `docs/` update, and a release note.
 
@@ -40,3 +41,4 @@ These are the rules for editing this package. `.agents/skills/ostrio-cookies/SKI
 5. Public API or behavior change: update `.agents/skills/ostrio-cookies/SKILL.md`. Keep it terse and user-facing, no package internals.
 6. Run `npm test` (Tinytest via mtest plus tsd) and `npm run test:coverage` (95% thresholds in `package.json` `nyc`, keep them). On Apple Silicon set `PUPPETEER_EXECUTABLE_PATH` to a local Chrome.
 7. Release: bump `version` in `package.js` (and the `onTest` dependency) and `metadata.version` in the skill. Breaking change: major bump and a note in `docs/migration-v*.md`, linked from the skill.
+8. Before `meteor publish`, run `METEOR_TEST_NO_PUBLISH=1 meteor publish`. It builds and lints like a real publish, then stops before upload. It rewrites `.versions` and reinstalls dev dependencies.
