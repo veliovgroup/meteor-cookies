@@ -264,3 +264,12 @@ Tinytest.add('helpers: clone, antiCircular and deserialize edge cases', (test) =
   test.equal(deserialize('JSON.parse({broken)'), 'JSON.parse({broken)', 'Invalid JSON wrapper stays string');
   test.equal(deserialize('true'), true, 'Typed value is parsed');
 });
+
+Tinytest.add('helpers: cookie names with percent sequences round-trip', (test) => {
+  const names = ['a%41', '100%', '%u0041', 'a;%41', '%25', 'ключ%D0'];
+  for (const name of names) {
+    const parsed = parse(serialize(name, 'value').cookieString.split('; ')[0]);
+    test.equal(Object.keys(parsed), [name], `Name "${name}" round-trips`);
+  }
+  test.isTrue(serialize('100%', 'value').cookieString.startsWith('100%=value'), 'Literal % without hex digits stays raw');
+});

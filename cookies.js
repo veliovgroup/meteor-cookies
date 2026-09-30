@@ -385,10 +385,7 @@ class CookiesCore {
       const cookiesArray = [];
       for (let i = 0; i < cookiesKeys.length; i++) {
         const { cookieString } = helpers.serialize(cookiesKeys[i], this.get(cookiesKeys[i]));
-        const pair = cookieString.split('; ')[0];
-        if (!cookiesArray.includes(pair)) {
-          cookiesArray.push(pair);
-        }
+        cookiesArray.push(cookieString.split('; ')[0]);
       }
 
       if (cookiesArray.length) {

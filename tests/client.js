@@ -304,12 +304,16 @@ Tinytest.add('Class - Cookies instance - __prepareSendData edge cases', (test) =
   cookiesInstance.cookies = {};
   const empty = cookiesInstance.__prepareSendData();
 
-  // `a;` IS ESCAPED TO `a%3B`, SO BOTH KEYS SERIALIZE TO THE SAME PAIR
-  cookiesInstance.cookies = { 'a;': 'same', 'a%3B': 'same' };
-  const duplicate = cookiesInstance.__prepareSendData();
+  // `a;` IS ESCAPED TO `a%3B`, LITERAL `a%3B` TO `a%253B`, SO NAMES DON'T COLLIDE
+  cookiesInstance.cookies = { 'a;': 'first', 'a%3B': 'second' };
+  const escaped = cookiesInstance.__prepareSendData();
   Meteor.isCordova = origiscordova;
 
   test.equal(empty.query, '', 'No query without cookies');
   test.isTrue(empty.path.endsWith('/___cookie___/set'), 'Relative path without cookies');
-  test.equal(duplicate.query, `?___cookies___=${encodeURIComponent('a%3B=same')}`, 'Duplicate pairs are sent once');
+  test.equal(escaped.query, `?___cookies___=${encodeURIComponent('a%3B=first; a%253B=second')}`, 'Escaped names stay distinct');
+
+  const sentCookies = new CookiesCore({ _cookies: decodeURIComponent(escaped.query.replace('?___cookies___=', '')) });
+  test.equal(sentCookies.get('a;'), 'first', 'Name with `;` round-trips');
+  test.equal(sentCookies.get('a%3B'), 'second', 'Name with literal percent sequence round-trips');
 });

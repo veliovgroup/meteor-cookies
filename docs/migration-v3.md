@@ -35,9 +35,9 @@ The endpoint responds `403` and skips `onCookies` hooks for requests from other 
 
 Action: on Cordova and Meteor-Desktop, set `allowedCordovaOrigins` on the *Server*. See [docs/cordova.md](./cordova.md).
 
-## Cookie names containing `;` or `=`
+## Cookie names containing `;`, `=`, or a percent sequence
 
-These names are now percent-encoded in `Set-Cookie`. `get()` and `has()` decode them back. A cookie with such a name that v2 wrote raw can't be removed by `remove(name)` in v3. v2 couldn't read those names back correctly either.
+Names with `;`, `=`, or a literal percent sequence such as `%41` or `%u0041` are now percent-encoded in `Set-Cookie`. `get()` and `has()` decode them back. A cookie with such a name that v2 wrote raw can't be removed by `remove(name)` in v3. v2 couldn't read those names back correctly either, for example `a%41` came back as `aA`.
 
 ## `path` or `domain` containing `;`
 

@@ -1,7 +1,7 @@
 const isStringifiedRegEx = /^JSON\.parse\((.*)\)$/;
 const isTypedRegEx = /^(false|true|null)$/;
 const cookiePairStartRegExp = /^[^=;,]+=/;
-const cookieNameUnsafeRegExp = /[;=]/;
+const cookieNameUnsafeRegExp = /[;=]|%(?:u[0-9A-Fa-f]{4}|[0-9A-Fa-f]{2})/;
 
 /**
  * @function
@@ -291,8 +291,8 @@ export const parse = (str, options) => {
       return;
     }
 
-    key = pair.slice(0, eqIndx).trim();
-    key = tryDecode(customUnescape(key), (opt.decode || decode));
+    // NAMES ARE WRITTEN BY `customEscape`; DECODING TWICE CORRUPTS LITERAL `%XX`
+    key = customUnescape(pair.slice(0, eqIndx).trim());
     val = pair.slice(++eqIndx).trim();
     if (val[0] === '"') {
       val = val.slice(1, -1);
