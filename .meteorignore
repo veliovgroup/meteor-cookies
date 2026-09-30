@@ -6,11 +6,13 @@ coverage/
 .cursorignore
 .github/
 .gitignore
+.npmignore
 .npm/
 .DS_Store
 .eslintcache
 .eslintrc
 AGENTS.md
+SECURITY.md
 CHANGELOG.md
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
