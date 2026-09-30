@@ -11,7 +11,7 @@
     "test": "npm run test:once && npm run test:types"
   },
   "devDependencies": {
-    "@zodern/mtest": "^0.5.1",
+    "@zodern/mtest": "^0.6.0",
     "nyc": "^18.0.0",
     "tsd": "^0.33.0"
   },
